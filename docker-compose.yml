@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: futbol-tracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-futbol_tracker}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - futbol_tracker_data:/var/lib/postgresql/data
+
+volumes:
+  futbol_tracker_data:

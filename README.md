@@ -1,98 +1,92 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Futbol Tracker API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API para registrar partidos de fútbol entre amigos: jugadores, partidos, goles/asistencias y una tabla de estadísticas (leaderboard).
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Stack
 
-## Description
+- NestJS
+- TypeORM + PostgreSQL
+- class-validator / class-transformer
+- JWT (`@nestjs/jwt`, sin Passport)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Arquitectura
 
-## Project setup
+Cada módulo de `src/modules` sigue una arquitectura por bounded context:
 
-```bash
-$ npm install
+```
+modules/<feature>/
+  domain/           entidades, ports (abstract class) y enums
+  application/       dtos y use-cases
+  infrastructure/     repositorios TypeORM que implementan los ports
+  presentation/       controllers
 ```
 
-## Compile and run the project
+Los errores de negocio se modelan como clases en `src/shared/errors/domain-errors.ts`
+(`NotFoundError`, `ConflictError`, `UnauthorizedError`, `ForbiddenError`, `ValidationError`)
+y son traducidos a respuestas HTTP por el `AllExceptionsFilter` global. Toda respuesta
+exitosa se envuelve en `{ success: true, data }` mediante el `TransformInterceptor` global.
+
+## Configuración
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
+npm install
 ```
 
-## Run tests
+Variables de entorno (validadas con Joi en `src/config/envs.ts`):
+
+| Variable         | Descripción                              |
+| ---------------- | ----------------------------------------- |
+| `NODE_ENV`        | `development` \| `production` \| `test`  |
+| `PORT`            | Puerto HTTP de la API                     |
+| `DB_HOST`         | Host de PostgreSQL                        |
+| `DB_PORT`         | Puerto de PostgreSQL                      |
+| `DB_USER`         | Usuario de PostgreSQL                     |
+| `DB_PASSWORD`     | Password de PostgreSQL                    |
+| `DB_NAME`         | Nombre de la base de datos                |
+| `JWT_SECRET`      | Secreto para firmar los JWT               |
+| `JWT_EXPIRES_IN`  | Expiración del token (ej. `1d`)           |
+
+## Base de datos local
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker compose up -d
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Correr el proyecto
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## Autenticación
 
-## Resources
+- El primer usuario se crea con `POST /auth/register` y queda como `admin` (bootstrap).
+  Mientras exista al menos un usuario, este endpoint queda bloqueado.
+- El resto de cuentas las crea un admin con `POST /users`.
+- `POST /auth/login` devuelve `{ accessToken, user }`.
+- Los endpoints protegidos requieren `Authorization: Bearer <accessToken>`.
 
-Check out a few resources that may come in handy when working with NestJS:
+## Endpoints principales
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Método | Ruta                        | Auth        | Descripción                                  |
+| ------ | --------------------------- | ----------- | --------------------------------------------- |
+| POST   | `/auth/register`            | Bootstrap   | Crea el primer usuario (admin)                |
+| POST   | `/auth/login`                | Público     | Login, devuelve token                         |
+| GET    | `/users/me`                  | JWT         | Perfil propio                                 |
+| GET    | `/users`                     | JWT + Admin | Lista de cuentas                              |
+| POST   | `/users`                     | JWT + Admin | Crea una cuenta                               |
+| GET    | `/players`                   | Público     | Lista de jugadores                            |
+| GET    | `/players/:id`               | Público     | Detalle de un jugador                         |
+| GET    | `/players/:id/stats`         | Público     | Goles, asistencias y partidos jugados         |
+| POST   | `/players`                   | JWT         | Crea un jugador                               |
+| PATCH  | `/players/:id`                | JWT         | Actualiza un jugador                          |
+| DELETE | `/players/:id`                | JWT         | Elimina un jugador                            |
+| GET    | `/matches`                   | Público     | Lista de partidos                             |
+| GET    | `/matches/:id`                | Público     | Detalle de un partido                         |
+| POST   | `/matches`                   | JWT         | Crea un partido en curso                      |
+| PATCH  | `/matches/:id/finish`         | JWT         | Finaliza un partido                           |
+| GET    | `/matches/:matchId/goals`     | Público     | Goles de un partido                           |
+| POST   | `/matches/:matchId/goals`     | JWT         | Registra un gol                               |
+| DELETE | `/goals/:id`                  | JWT         | Elimina un gol (solo si el partido sigue en curso) |
+| GET    | `/stats/leaderboard`          | Público     | Tabla de goles/asistencias por jugador        |
