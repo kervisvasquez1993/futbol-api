@@ -9,13 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
 app.enableCors({
-  origin: (origin, callback) => {
-    if (!origin || origin.endsWith('.vercel.app') || origin === 'https://futbol-frotend.vercel.app') {
-      callback(null, true);
-    } else {
-      callback(new Error('No permitido por CORS'));
-    }
-  },
+  origin: ['https://futbol-frotend.vercel.app'],
   credentials: true,
 });
 
