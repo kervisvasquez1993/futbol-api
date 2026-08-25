@@ -13,6 +13,7 @@ export const dataSourceOptions: DataSourceOptions = {
   password: envs.dbPassword,
   database: envs.dbName,
   entities: [User, Player, Match, Goal],
+  migrations: [__dirname + '/../../migrations/*{.ts,.js}'],
   synchronize: envs.nodeEnv !== 'production',
 };
 
