@@ -1,4 +1,7 @@
+import * as dotenv from 'dotenv';
 import * as Joi from 'joi';
+
+dotenv.config();
 
 interface EnvVars {
   NODE_ENV: string;
@@ -20,7 +23,7 @@ const envsSchema = Joi.object<EnvVars>({
   DB_HOST: Joi.string().required(),
   DB_PORT: Joi.number().default(5432),
   DB_USER: Joi.string().required(),
-  DB_PASSWORD: Joi.string().required(),
+  DB_PASSWORD: Joi.string().allow('').required(),
   DB_NAME: Joi.string().required(),
   JWT_SECRET: Joi.string().required(),
   JWT_EXPIRES_IN: Joi.string().default('1d'),

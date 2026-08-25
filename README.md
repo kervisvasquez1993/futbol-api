@@ -90,3 +90,113 @@ npm run start:dev
 | POST   | `/matches/:matchId/goals`     | JWT         | Registra un gol                               |
 | DELETE | `/goals/:id`                  | JWT         | Elimina un gol (solo si el partido sigue en curso) |
 | GET    | `/stats/leaderboard`          | Público     | Tabla de goles/asistencias por jugador        |
+
+## Payloads de ejemplo
+
+Toda respuesta exitosa viene envuelta como `{ "success": true, "data": ... }`.
+
+### POST /auth/register
+
+```json
+{
+  "email": "admin@futbol.com",
+  "password": "123456",
+  "name": "Admin"
+}
+```
+
+### POST /auth/login
+
+```json
+{
+  "email": "admin@futbol.com",
+  "password": "123456"
+}
+```
+
+Devuelve `{ accessToken, user }`. Usa ese `accessToken` como `Authorization: Bearer <accessToken>`
+en los endpoints marcados como JWT.
+
+### POST /users (JWT + Admin)
+
+```json
+{
+  "email": "jugador1@futbol.com",
+  "password": "123456",
+  "name": "Jugador Uno",
+  "role": "member"
+}
+```
+
+`role` es opcional (default `member`).
+
+### POST /players (JWT)
+
+```json
+{
+  "name": "Messi",
+  "imageUrl": "https://example.com/messi.png"
+}
+```
+
+`imageUrl` es opcional.
+
+### PATCH /players/:id (JWT)
+
+```json
+{
+  "name": "Lionel Messi"
+}
+```
+
+Ambos campos (`name`, `imageUrl`) son opcionales.
+
+### POST /matches (JWT)
+
+```json
+{
+  "name": "Partido de los viernes",
+  "date": "2026-08-21T20:00:00.000Z",
+  "playerIds": ["uuid-jugador-1", "uuid-jugador-2", "uuid-jugador-3"]
+}
+```
+
+Mínimo 2 `playerIds`, todos deben existir como jugadores.
+
+### POST /matches/:matchId/goals (JWT)
+
+```json
+{
+  "scorerId": "uuid-jugador-1",
+  "assistId": "uuid-jugador-2",
+  "minute": 34
+}
+```
+
+`assistId` y `minute` son opcionales. `scorerId`/`assistId` deben ser participantes
+del partido, y el partido debe estar `en_curso`.
+
+### Endpoints sin body
+
+- `GET /users/me` — JWT
+- `GET /users` — JWT + Admin
+- `GET /players` — público
+- `GET /players/:id` — público
+- `GET /players/:id/stats` — público
+- `DELETE /players/:id` — JWT
+- `GET /matches` — público
+- `GET /matches/:id` — público
+- `PATCH /matches/:id/finish` — JWT
+- `GET /matches/:matchId/goals` — público
+- `DELETE /goals/:id` — JWT
+- `GET /stats/leaderboard` — público
+
+### Flujo de prueba sugerido
+
+1. `POST /auth/register` → crea el admin.
+2. `POST /auth/login` → obtén el `accessToken`.
+3. `POST /players` (x2 o x3) → crea jugadores.
+4. `POST /matches` con los `playerIds` creados.
+5. `POST /matches/:matchId/goals` → registra goles/asistencias.
+6. `GET /stats/leaderboard` y `GET /players/:id/stats` → verifica los cálculos.
+7. `PATCH /matches/:id/finish` → cierra el partido.
