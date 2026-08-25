@@ -23,6 +23,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const { status, message, errors } = this.resolveException(exception);
 
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+      console.error('❌ ERROR NO CONTROLADO:', exception);
+    }
+
     response.status(status).json({
       success: false,
       message,
