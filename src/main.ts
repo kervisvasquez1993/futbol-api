@@ -9,8 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
 app.enableCors({
-  origin: ['https://futbol-frotend.vercel.app'],
-  credentials: true,
+  origin: '*',
 });
 
   app.useGlobalPipes(
