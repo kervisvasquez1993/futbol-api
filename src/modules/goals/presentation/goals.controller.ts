@@ -1,8 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
 import { CreateGoalDto } from '../application/dtos/create-goal.dto';
 import { AddGoalUseCase } from '../application/use-cases/add-goal.use-case';
 import { DeleteGoalUseCase } from '../application/use-cases/delete-goal.use-case';
+import { GetMatchSummaryUseCase } from '../application/use-cases/get-match-summary.use-case';
 import { ListGoalsByMatchUseCase } from '../application/use-cases/list-goals-by-match.use-case';
 
 @Controller()
@@ -11,11 +20,17 @@ export class GoalsController {
     private readonly addGoalUseCase: AddGoalUseCase,
     private readonly listGoalsByMatchUseCase: ListGoalsByMatchUseCase,
     private readonly deleteGoalUseCase: DeleteGoalUseCase,
+    private readonly getMatchSummaryUseCase: GetMatchSummaryUseCase,
   ) {}
 
   @Get('matches/:matchId/goals')
   listByMatch(@Param('matchId') matchId: string) {
     return this.listGoalsByMatchUseCase.execute(matchId);
+  }
+
+  @Get('matches/:matchId/summary')
+  summary(@Param('matchId') matchId: string) {
+    return this.getMatchSummaryUseCase.execute(matchId);
   }
 
   @UseGuards(JwtAuthGuard)

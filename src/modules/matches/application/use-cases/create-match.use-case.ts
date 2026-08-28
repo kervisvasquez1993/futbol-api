@@ -13,7 +13,16 @@ export class CreateMatchUseCase {
   ) {}
 
   async execute(dto: CreateMatchDto) {
-    const uniquePlayerIds = Array.from(new Set(dto.playerIds));
+    const uniquePlayerIds = Array.from(
+      new Set(dto.participants.map((participant) => participant.playerId)),
+    );
+
+    if (uniquePlayerIds.length !== dto.participants.length) {
+      throw new ValidationError(
+        'Un mismo jugador no puede repetirse en el partido',
+      );
+    }
+
     const players = await this.playerRepository.findByIds(uniquePlayerIds);
 
     if (players.length !== uniquePlayerIds.length) {
@@ -24,7 +33,12 @@ export class CreateMatchUseCase {
       name: dto.name,
       date: new Date(dto.date),
       status: MatchStatus.EN_CURSO,
-      participants: players,
+      homeTeamName: dto.homeTeamName ?? 'Equipo A',
+      awayTeamName: dto.awayTeamName ?? 'Equipo B',
+      participants: dto.participants.map((participant) => ({
+        playerId: participant.playerId,
+        team: participant.team,
+      })),
     });
   }
 }

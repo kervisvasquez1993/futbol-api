@@ -2,12 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinTable,
-  ManyToMany,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Player } from '../../../players/domain/entities/player.entity';
 import { MatchStatus } from '../enums/match-status.enum';
+import { MatchParticipant } from './match-participant.entity';
 
 @Entity('matches')
 export class Match {
@@ -27,13 +26,22 @@ export class Match {
   })
   status: MatchStatus;
 
-  @ManyToMany(() => Player)
-  @JoinTable({
-    name: 'match_participants',
-    joinColumn: { name: 'match_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'player_id', referencedColumnName: 'id' },
+  @Column({ name: 'home_team_name', default: 'Equipo A' })
+  homeTeamName: string;
+
+  @Column({ name: 'away_team_name', default: 'Equipo B' })
+  awayTeamName: string;
+
+  @Column({ name: 'home_score', type: 'int', default: 0 })
+  homeScore: number;
+
+  @Column({ name: 'away_score', type: 'int', default: 0 })
+  awayScore: number;
+
+  @OneToMany(() => MatchParticipant, (participant) => participant.match, {
+    cascade: true,
   })
-  participants: Player[];
+  participants: MatchParticipant[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

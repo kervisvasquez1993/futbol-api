@@ -9,7 +9,9 @@ export class AdminGuard implements CanActivate {
     const user = request.user;
 
     if (user?.role !== UserRole.ADMIN) {
-      throw new ForbiddenError('Esta acción requiere permisos de administrador');
+      throw new ForbiddenError(
+        'Esta acción requiere permisos de administrador',
+      );
     }
 
     return true;

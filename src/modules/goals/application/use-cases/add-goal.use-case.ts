@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { GoalRepository } from '../../domain/ports/goal.repository';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
-import { MatchStatus } from '../../../matches/domain/enums/match-status.enum';
-import { ConflictError, ValidationError } from '../../../../shared/errors/domain-errors';
+import {
+  ConflictError,
+  ValidationError,
+} from '../../../../shared/errors/domain-errors';
 import { CreateGoalDto } from '../dtos/create-goal.dto';
 
 @Injectable()
@@ -19,14 +21,14 @@ export class AddGoalUseCase {
       throw new ConflictError('El partido no existe');
     }
 
-    if (match.status !== MatchStatus.EN_CURSO) {
-      throw new ConflictError('El partido ya finalizó, no se pueden registrar goles');
-    }
-
-    const participantIds = new Set(match.participants.map((participant) => participant.id));
+    const participantIds = new Set(
+      match.participants.map((participant) => participant.playerId),
+    );
 
     if (!participantIds.has(dto.scorerId)) {
-      throw new ValidationError('El goleador debe ser un participante del partido');
+      throw new ValidationError(
+        'El goleador debe ser un participante del partido',
+      );
     }
 
     if (dto.assistId) {
@@ -37,7 +39,9 @@ export class AddGoalUseCase {
       }
 
       if (!participantIds.has(dto.assistId)) {
-        throw new ValidationError('El asistente debe ser un participante del partido');
+        throw new ValidationError(
+          'El asistente debe ser un participante del partido',
+        );
       }
     }
 

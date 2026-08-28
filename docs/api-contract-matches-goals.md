@@ -8,9 +8,12 @@ devuelven tal cual y el `TransformInterceptor` global las envuelve en `{ success
 
 ## 1. GET /matches
 
-`ListMatchesUseCase` -> `matchRepository.findAll()` -> `repository.find({ relations: { participants: true } })`.
+`ListMatchesUseCase` -> `matchRepository.findAll()` -> `repository.find({ relations: { participants: { player: true } } })`.
 
-Los `participants` **SÍ vienen como objetos completos anidados** (`Player[]`), no como array de ids.
+**Cambio de contrato (antes `participants` era `Player[]` directo):** ahora `participants` es un
+array de `MatchParticipant` — cada uno con `playerId` + `player` (objeto `Player` anidado) + `team`
+(`"home" | "away"`). Además el `Match` ahora trae `homeTeamName`, `awayTeamName`, `homeScore` y
+`awayScore` (ambos `number`, **arrancan en `0`** al crear el partido, nunca son `null`).
 
 ```json
 {
@@ -21,18 +24,36 @@ Los `participants` **SÍ vienen como objetos completos anidados** (`Player[]`), 
       "name": "Partido viernes",
       "date": "2026-08-21T20:00:00.000Z",
       "status": "en_curso",
+      "homeTeamName": "Equipo A",
+      "awayTeamName": "Equipo B",
+      "homeScore": 0,
+      "awayScore": 0,
       "participants": [
         {
-          "id": "p1-uuid",
-          "name": "Kervis",
-          "imageUrl": "https://cdn.example.com/kervis.png",
-          "createdAt": "2026-01-10T12:00:00.000Z"
+          "id": "mp1-uuid",
+          "matchId": "a1b2c3d4-1111-2222-3333-444455556666",
+          "playerId": "p1-uuid",
+          "team": "home",
+          "player": {
+            "id": "p1-uuid",
+            "name": "Kervis",
+            "imageUrl": "https://cdn.example.com/kervis.png",
+            "createdAt": "2026-01-10T12:00:00.000Z"
+          },
+          "createdAt": "2026-08-20T15:30:00.000Z"
         },
         {
-          "id": "p2-uuid",
-          "name": "Juan",
-          "imageUrl": null,
-          "createdAt": "2026-01-10T12:05:00.000Z"
+          "id": "mp2-uuid",
+          "matchId": "a1b2c3d4-1111-2222-3333-444455556666",
+          "playerId": "p2-uuid",
+          "team": "away",
+          "player": {
+            "id": "p2-uuid",
+            "name": "Juan",
+            "imageUrl": null,
+            "createdAt": "2026-01-10T12:05:00.000Z"
+          },
+          "createdAt": "2026-08-20T15:30:00.000Z"
         }
       ],
       "createdAt": "2026-08-20T15:30:00.000Z"
@@ -50,35 +71,33 @@ enum MatchStatus {
 }
 ```
 
-Solo existen esos dos valores. No hay "pendiente", "cancelado", etc.
+Solo existen esos dos valores. No hay "pendiente", "cancelado", etc. `homeScore`/`awayScore` no
+dependen de este estado: se pueden ajustar en cualquier `status` (ver secciones 3.3 y 3.3b).
+
+### Enum `team` (`src/modules/matches/domain/enums/match-team-side.enum.ts`):
+
+```ts
+enum MatchTeamSide {
+  HOME = 'home',
+  AWAY = 'away',
+}
+```
+
+Solo existe dentro de cada partido — no hay una entidad `Team` reutilizable entre partidos.
+`homeTeamName`/`awayTeamName` son solo un nombre de display por partido (default `"Equipo A"`/`"Equipo B"`).
 
 ---
 
 ## 2. GET /matches/:id
 
-`GetMatchUseCase` -> mismo repo, `findOne({ where: { id }, relations: { participants: true } })`.
+`GetMatchUseCase` -> mismo repo, `findOne({ where: { id }, relations: { participants: { player: true } } })`.
 404 (`NotFoundError` -> filtro global) si no existe.
 
-Es **el mismo shape que un elemento del array de `/matches`** (mismo objeto `Match` con `participants` anidados).
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": "a1b2c3d4-1111-2222-3333-444455556666",
-    "name": "Partido viernes",
-    "date": "2026-08-21T20:00:00.000Z",
-    "status": "finalizado",
-    "participants": [
-      { "id": "p1-uuid", "name": "Kervis", "imageUrl": "https://cdn.example.com/kervis.png", "createdAt": "2026-01-10T12:00:00.000Z" }
-    ],
-    "createdAt": "2026-08-20T15:30:00.000Z"
-  }
-}
-```
+Es **el mismo shape que un elemento del array de `/matches`** (mismo objeto `Match`, ver sección 1).
 
 **NO trae los goles anidados.** No hay relación `goals` en el `Match` entity ni se cargan en el use-case.
-Hay que pedirlos aparte con `GET /matches/:matchId/goals`.
+Hay que pedirlos aparte con `GET /matches/:matchId/goals`, o usar `GET /matches/:matchId/summary`
+(sección 3.4) si además se necesita el desglose por equipo.
 
 ---
 
@@ -137,6 +156,141 @@ Nota: `match` (el objeto `Match` completo) NO se carga en esta relación (`relat
 no incluye `match`), así que ese campo no viene en la respuesta aunque exista en la entidad.
 
 `minute` puede ser `null` (es opcional en `CreateGoalDto`). `assistId`/`assist` también pueden ser `null`.
+
+**`POST /matches/:matchId/goals` y `DELETE /goals/:id` ya no dependen del `status` del partido.**
+Antes ambos tiraban `ConflictError` (409) si el partido estaba `finalizado`; ese chequeo se quitó
+de `AddGoalUseCase` y `DeleteGoalUseCase` — se puede registrar o borrar un gol sin importar el
+estado del partido, justamente para poder cargar goles olvidados después de finalizar.
+
+---
+
+## 3.1. POST /matches (body actualizado — reemplaza `playerIds`)
+
+`CreateMatchUseCase` ya no recibe `playerIds: string[]`, recibe `participants` con el equipo de
+cada jugador (`CreateMatchDto`, `src/modules/matches/application/dtos/create-match.dto.ts`):
+
+```json
+{
+  "name": "Partido viernes",
+  "date": "2026-08-21T20:00:00.000Z",
+  "homeTeamName": "Equipo Rojo",
+  "awayTeamName": "Equipo Azul",
+  "participants": [
+    { "playerId": "p1-uuid", "team": "home" },
+    { "playerId": "p2-uuid", "team": "away" }
+  ]
+}
+```
+
+`participants` requiere mínimo 2 elementos; cada `playerId` debe existir como jugador y no puede
+repetirse dentro del mismo body (`ValidationError` 400 si se repite o si algún jugador no existe).
+`homeTeamName`/`awayTeamName` son opcionales.
+
+---
+
+## 3.2. POST /matches/:id/participants (nuevo)
+
+`AddParticipantUseCase`. Agrega un jugador a un partido ya existente, **sin restricción de `status`**
+(funciona igual con el partido `en_curso` o `finalizado`).
+
+```json
+{ "playerId": "p3-uuid", "team": "away" }
+```
+
+- 404 (`NotFoundError`) si el partido no existe.
+- 400 (`ValidationError`) si el jugador no existe.
+- 409 (`ConflictError`) si el jugador ya es participante de ese partido.
+
+Devuelve el `MatchParticipant` creado (mismo shape que cada elemento de `participants` en la sección 1).
+
+---
+
+## 3.3. PATCH /matches/:id/score (nuevo) — marcador en vivo, +1/-1
+
+`AdjustMatchScoreUseCase`. Pensado para el uso durante el partido: cada gol se refleja al toque
+con un botón +1 (y -1 para corregir si se cargó al equipo equivocado). Es un ajuste **relativo**,
+no reemplaza el valor — hace `home_score/away_score = GREATEST(valor_actual + delta, 0)` a nivel
+SQL (`TypeOrmMatchRepository.adjustScore`), así que nunca baja de `0` aunque se mande `-1` de más.
+
+```json
+{ "team": "home", "delta": 1 }
+```
+
+`delta` solo acepta `1` o `-1` (`AdjustMatchScoreDto`, `IsIn([1, -1])`). 404 (`NotFoundError`) si
+el partido no existe. Devuelve el `Match` actualizado (shape de la sección 1). Se puede llamar sin
+importar el `status` del partido, y es independiente de `POST /matches/:matchId/goals` — este
+endpoint solo mueve el marcador, no crea un registro de "quién anotó" (eso lo sigue haciendo el
+endpoint de goles, necesario para las estadísticas por jugador).
+
+---
+
+## 3.3b. PATCH /matches/:id/result — corrección con valor absoluto
+
+`SetMatchResultUseCase`. Sobreescribe el marcador con un número exacto, para cuando hace falta
+corregir todo de una en vez de ir sumando de a uno. Sigue siendo independiente de los goles
+registrados individualmente (no se recalcula solo, y puede no coincidir con `goalsByTeam` en
+`GET /matches/:matchId/summary` si faltó cargar algún gol). Se puede llamar sin importar el
+`status` del partido.
+
+```json
+{ "homeScore": 3, "awayScore": 2 }
+```
+
+404 (`NotFoundError`) si el partido no existe. Devuelve el `Match` actualizado (shape de la sección 1).
+
+---
+
+## 3.4. GET /matches/:matchId/summary (nuevo)
+
+`GetMatchSummaryUseCase` (vive en el módulo `goals` porque necesita cruzar `MatchRepository` +
+`GoalRepository`). Junta: los datos del partido, los participantes agrupados por equipo, y cada
+gol con el `team` de quien lo anotó (cruzando `scorerId` contra los `participants` del partido) más
+un conteo `goalsByTeam` calculado a partir de los goles — pensado para comparar contra el
+`homeScore`/`awayScore` del marcador (secciones 3.3 y 3.3b), que puede no coincidir si faltó
+cargar algún gol individual aunque el marcador en vivo esté al día.
+
+```json
+{
+  "success": true,
+  "data": {
+    "match": {
+      "id": "a1b2c3d4-1111-2222-3333-444455556666",
+      "name": "Partido viernes",
+      "date": "2026-08-21T20:00:00.000Z",
+      "status": "finalizado",
+      "homeTeamName": "Equipo Rojo",
+      "awayTeamName": "Equipo Azul",
+      "homeScore": 3,
+      "awayScore": 2
+    },
+    "participants": {
+      "home": [
+        { "id": "p1-uuid", "name": "Kervis", "imageUrl": null, "createdAt": "2026-01-10T12:00:00.000Z" }
+      ],
+      "away": [
+        { "id": "p2-uuid", "name": "Juan", "imageUrl": null, "createdAt": "2026-01-10T12:05:00.000Z" }
+      ]
+    },
+    "goals": [
+      {
+        "id": "goal-uuid-1",
+        "matchId": "a1b2c3d4-1111-2222-3333-444455556666",
+        "scorerId": "p1-uuid",
+        "scorer": { "id": "p1-uuid", "name": "Kervis", "imageUrl": null, "createdAt": "2026-01-10T12:00:00.000Z" },
+        "assistId": null,
+        "assist": null,
+        "minute": 34,
+        "createdAt": "2026-08-21T20:34:00.000Z",
+        "team": "home"
+      }
+    ],
+    "goalsByTeam": { "home": 2, "away": 1 }
+  }
+}
+```
+
+`goal.team` sale `null` si el `scorerId` del gol ya no figura en `participants` (caso raro, no
+debería pasar en operación normal). 404 (`NotFoundError`) si el partido no existe.
 
 ---
 
@@ -376,6 +530,7 @@ No hay endpoint para actualizar (`PATCH`) ni borrar usuarios en `UsersController
 
 ```ts
 type MatchStatus = 'en_curso' | 'finalizado';
+type MatchTeamSide = 'home' | 'away';
 
 interface PlayerDto {
   id: string;
@@ -384,12 +539,25 @@ interface PlayerDto {
   createdAt: string; // ISO
 }
 
+interface MatchParticipantDto {
+  id: string;
+  matchId: string;
+  playerId: string;
+  team: MatchTeamSide;
+  player: PlayerDto;
+  createdAt: string; // ISO
+}
+
 interface MatchDto {
   id: string;
   name: string;
   date: string; // ISO
   status: MatchStatus;
-  participants: PlayerDto[]; // objetos completos, NO ids
+  homeTeamName: string;
+  awayTeamName: string;
+  homeScore: number; // arranca en 0, se ajusta con PATCH /matches/:id/score o /result
+  awayScore: number;
+  participants: MatchParticipantDto[]; // ya NO es Player[] directo
   createdAt: string; // ISO
 }
 
@@ -402,6 +570,20 @@ interface GoalDto {
   assist: PlayerDto | null;
   minute: number | null;
   createdAt: string; // ISO
+}
+
+interface GoalWithTeamDto extends GoalDto {
+  team: MatchTeamSide | null; // solo en GET /matches/:matchId/summary
+}
+
+interface MatchSummaryDto {
+  match: Pick<
+    MatchDto,
+    'id' | 'name' | 'date' | 'status' | 'homeTeamName' | 'awayTeamName' | 'homeScore' | 'awayScore'
+  >;
+  participants: { home: PlayerDto[]; away: PlayerDto[] };
+  goals: GoalWithTeamDto[];
+  goalsByTeam: { home: number; away: number };
 }
 
 interface LeaderboardEntryDto {
@@ -441,9 +623,14 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
-// GET /matches              -> ApiEnvelope<MatchDto[]>
-// GET /matches/:id          -> ApiEnvelope<MatchDto>              (sin goles anidados)
-// GET /matches/:id/goals    -> ApiEnvelope<GoalDto[]>
+// GET /matches                    -> ApiEnvelope<MatchDto[]>
+// GET /matches/:id                -> ApiEnvelope<MatchDto>              (sin goles anidados)
+// POST /matches                   -> ApiEnvelope<MatchDto>              (body: participants[], no playerIds)
+// POST /matches/:id/participants  -> ApiEnvelope<MatchParticipantDto>   (funciona con el partido finalizado)
+// PATCH /matches/:id/score        -> ApiEnvelope<MatchDto>              (+1/-1 en vivo, delta: 1 | -1)
+// PATCH /matches/:id/result       -> ApiEnvelope<MatchDto>              (sobreescribe con valor absoluto)
+// GET /matches/:id/goals          -> ApiEnvelope<GoalDto[]>
+// GET /matches/:id/summary        -> ApiEnvelope<MatchSummaryDto>       (equipos + goles desglosados)
 // GET /players              -> ApiEnvelope<PlayerDto[]>           (sin stats)
 // GET /stats/leaderboard    -> ApiEnvelope<LeaderboardEntryDto[]> (ordenado por backend, sin imageUrl)
 // GET /players/:id/stats    -> ApiEnvelope<PlayerStatsDto>        (404 si no existe el jugador)

@@ -84,11 +84,15 @@ npm run start:dev
 | DELETE | `/players/:id`                | JWT         | Elimina un jugador                            |
 | GET    | `/matches`                   | Público     | Lista de partidos                             |
 | GET    | `/matches/:id`                | Público     | Detalle de un partido                         |
-| POST   | `/matches`                   | JWT         | Crea un partido en curso                      |
+| POST   | `/matches`                   | JWT         | Crea un partido en curso, con jugadores repartidos en dos equipos |
 | PATCH  | `/matches/:id/finish`         | JWT         | Finaliza un partido                           |
+| POST   | `/matches/:id/participants`   | JWT         | Agrega un jugador a un partido existente (en cualquier estado) |
+| PATCH  | `/matches/:id/result`         | JWT         | Sobreescribe el marcador con un valor absoluto |
+| PATCH  | `/matches/:id/score`          | JWT         | Suma o resta 1 gol al marcador de un equipo (para corregir en vivo) |
 | GET    | `/matches/:matchId/goals`     | Público     | Goles de un partido                           |
-| POST   | `/matches/:matchId/goals`     | JWT         | Registra un gol                               |
-| DELETE | `/goals/:id`                  | JWT         | Elimina un gol (solo si el partido sigue en curso) |
+| GET    | `/matches/:matchId/summary`   | Público     | Jugadores agrupados por equipo + goles desglosados por equipo |
+| POST   | `/matches/:matchId/goals`     | JWT         | Registra un gol (en cualquier estado del partido) |
+| DELETE | `/goals/:id`                  | JWT         | Elimina un gol (en cualquier estado del partido) |
 | GET    | `/stats/leaderboard`          | Público     | Tabla de goles/asistencias por jugador        |
 
 ## Payloads de ejemplo
@@ -157,11 +161,63 @@ Ambos campos (`name`, `imageUrl`) son opcionales.
 {
   "name": "Partido de los viernes",
   "date": "2026-08-21T20:00:00.000Z",
-  "playerIds": ["uuid-jugador-1", "uuid-jugador-2", "uuid-jugador-3"]
+  "homeTeamName": "Equipo Rojo",
+  "awayTeamName": "Equipo Azul",
+  "participants": [
+    { "playerId": "uuid-jugador-1", "team": "home" },
+    { "playerId": "uuid-jugador-2", "team": "away" },
+    { "playerId": "uuid-jugador-3", "team": "home" }
+  ]
 }
 ```
 
-Mínimo 2 `playerIds`, todos deben existir como jugadores.
+Mínimo 2 `participants`, todos con `playerId` de un jugador existente y `team` en `"home" | "away"`.
+`homeTeamName`/`awayTeamName` son opcionales (por defecto `"Equipo A"`/`"Equipo B"`).
+
+### POST /matches/:id/participants (JWT)
+
+```json
+{
+  "playerId": "uuid-jugador-4",
+  "team": "away"
+}
+```
+
+Agrega un jugador a un partido ya creado, sin importar su `status` (incluso `finalizado`) —
+pensado para cargar a alguien que quedó afuera al crear el partido, antes de registrarle un gol.
+Falla con 409 si el jugador ya es participante de ese partido.
+
+El marcador (`homeScore`/`awayScore`) arranca en `0` al crear el partido — no es `null`.
+
+### PATCH /matches/:id/score (JWT) — botones +1/-1 del marcador en vivo
+
+```json
+{
+  "team": "home",
+  "delta": 1
+}
+```
+
+`delta` solo acepta `1` (sumar un gol) o `-1` (restar, por si se cargó mal). Nunca baja de `0`
+(un `-1` sobre `0` se queda en `0`). Pensado para el marcador en tiempo real durante el partido:
+cada vez que alguien mete un gol se llama con `delta: 1` para el equipo correspondiente; si se
+cargó al equipo equivocado, se corrige con `delta: -1` sobre ese equipo y `delta: 1` sobre el otro.
+Es independiente de `POST /matches/:matchId/goals` (que registra el gol asociado a un jugador
+específico, para las estadísticas) — se pueden usar juntos o por separado.
+
+### PATCH /matches/:id/result (JWT) — corrección puntual con un valor absoluto
+
+```json
+{
+  "homeScore": 3,
+  "awayScore": 2
+}
+```
+
+Sobreescribe el marcador con un número exacto, por si hace falta corregir de una todo el resultado
+en vez de ir sumando de a uno. Es independiente de los goles registrados individualmente (no se
+recalcula solo, y puede no coincidir con `GET /matches/:matchId/summary`). Se puede llamar sin
+importar el `status` del partido.
 
 ### POST /matches/:matchId/goals (JWT)
 
@@ -174,7 +230,8 @@ Mínimo 2 `playerIds`, todos deben existir como jugadores.
 ```
 
 `assistId` y `minute` son opcionales. `scorerId`/`assistId` deben ser participantes
-del partido, y el partido debe estar `en_curso`.
+del partido. Ya **no** requiere que el partido esté `en_curso`: se puede registrar un gol
+aunque el partido esté `finalizado`.
 
 ### Endpoints sin body
 
@@ -188,6 +245,7 @@ del partido, y el partido debe estar `en_curso`.
 - `GET /matches/:id` — público
 - `PATCH /matches/:id/finish` — JWT
 - `GET /matches/:matchId/goals` — público
+- `GET /matches/:matchId/summary` — público
 - `DELETE /goals/:id` — JWT
 - `GET /stats/leaderboard` — público
 
@@ -195,8 +253,13 @@ del partido, y el partido debe estar `en_curso`.
 
 1. `POST /auth/register` → crea el admin.
 2. `POST /auth/login` → obtén el `accessToken`.
-3. `POST /players` (x2 o x3) → crea jugadores.
-4. `POST /matches` con los `playerIds` creados.
-5. `POST /matches/:matchId/goals` → registra goles/asistencias.
-6. `GET /stats/leaderboard` y `GET /players/:id/stats` → verifica los cálculos.
+3. `POST /players` (x4 o más) → crea jugadores.
+4. `POST /matches` repartiendo los jugadores en `participants` (`team: "home" | "away"`) — el marcador arranca en 0-0.
+5. Por cada gol en vivo: `PATCH /matches/:id/score` (`delta: 1` al equipo que anotó) + `POST /matches/:matchId/goals` (para saber quién anotó, de cara a las estadísticas).
+6. Si alguien se equivoca de equipo al cargar el marcador: `PATCH /matches/:id/score` con `delta: -1` al equipo mal cargado y `delta: 1` al correcto.
 7. `PATCH /matches/:id/finish` → cierra el partido.
+8. `POST /matches/:id/participants` → agrega a un jugador olvidado, aun con el partido finalizado.
+9. `POST /matches/:matchId/goals` → carga el gol de ese jugador (funciona igual, finalizado o no).
+10. `PATCH /matches/:id/result` → si hace falta, corrige el marcador final con un valor absoluto.
+11. `GET /matches/:matchId/summary` → revisa jugadores por equipo y goles desglosados por equipo.
+12. `GET /stats/leaderboard` y `GET /players/:id/stats` → verifica los cálculos por jugador (se actualizan cuando el partido termina de cargarse).

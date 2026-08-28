@@ -32,10 +32,12 @@ const envsSchema = Joi.object<EnvVars>({
 const { error, value } = envsSchema.validate(process.env);
 
 if (error) {
-  throw new Error(`Error de configuración de variables de entorno: ${error.message}`);
+  throw new Error(
+    `Error de configuración de variables de entorno: ${error.message}`,
+  );
 }
 
-const envVars = value as EnvVars;
+const envVars = value;
 
 export const envs = {
   nodeEnv: envVars.NODE_ENV,

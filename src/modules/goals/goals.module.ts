@@ -6,6 +6,7 @@ import { GoalRepository } from './domain/ports/goal.repository';
 import { TypeOrmGoalRepository } from './infrastructure/repositories/typeorm-goal.repository';
 import { AddGoalUseCase } from './application/use-cases/add-goal.use-case';
 import { DeleteGoalUseCase } from './application/use-cases/delete-goal.use-case';
+import { GetMatchSummaryUseCase } from './application/use-cases/get-match-summary.use-case';
 import { ListGoalsByMatchUseCase } from './application/use-cases/list-goals-by-match.use-case';
 import { GoalsController } from './presentation/goals.controller';
 
@@ -16,6 +17,7 @@ import { GoalsController } from './presentation/goals.controller';
     AddGoalUseCase,
     ListGoalsByMatchUseCase,
     DeleteGoalUseCase,
+    GetMatchSummaryUseCase,
     { provide: GoalRepository, useClass: TypeOrmGoalRepository },
   ],
 })

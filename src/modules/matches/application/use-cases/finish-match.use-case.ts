@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { MatchRepository } from '../../domain/ports/match.repository';
-import { ConflictError, NotFoundError } from '../../../../shared/errors/domain-errors';
+import {
+  ConflictError,
+  NotFoundError,
+} from '../../../../shared/errors/domain-errors';
 import { MatchStatus } from '../../domain/enums/match-status.enum';
 
 @Injectable()
