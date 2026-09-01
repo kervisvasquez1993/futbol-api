@@ -15,7 +15,7 @@ export const dataSourceOptions: DataSourceOptions = {
   database: envs.dbName,
   entities: [User, Player, Match, MatchParticipant, Goal],
   migrations: [__dirname + '/../../migrations/*{.ts,.js}'],
-  synchronize: envs.nodeEnv !== 'production',
+  synchronize: false,
 };
 
 export const AppDataSource = new DataSource(dataSourceOptions);

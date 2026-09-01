@@ -51,13 +51,50 @@ Variables de entorno (validadas con Joi en `src/config/envs.ts`):
 
 ```bash
 docker compose up -d
+npm run migration:run
 ```
+
+`synchronize` está **apagado siempre** (dev y producción) — el esquema se arma únicamente
+corriendo las migraciones de `src/migrations/`, nunca se sincroniza solo desde las entidades.
 
 ## Correr el proyecto
 
 ```bash
 npm run start:dev
 ```
+
+## Migraciones (flujo obligatorio, tipo Laravel)
+
+Cada vez que agregues, quites o modifiques una entidad de TypeORM (`src/modules/**/domain/entities/*.entity.ts`),
+tenés que generar y correr su migración — el esquema **no** se actualiza solo:
+
+```bash
+# 1. Editá la entity.
+# 2. Generá la migración (compara tus entities contra la DB real, necesita la DB levantada):
+npm run migration:generate -- src/migrations/NombreDescriptivoDelCambio
+
+# 3. Revisá el archivo generado en src/migrations/ (TypeORM a veces genera cosas de más
+#    si hay diffs de tipos/defaults que no tienen que ver con tu cambio).
+
+# 4. Corré la migración contra tu DB local:
+npm run migration:run
+```
+
+Comandos disponibles (`package.json`):
+
+| Comando | Qué hace |
+| --- | --- |
+| `npm run migration:generate -- src/migrations/Nombre` | Genera una migración nueva comparando entities vs. la DB conectada |
+| `npm run migration:run` | Aplica las migraciones pendientes (dev) |
+| `npm run migration:run:prod` | Igual, pero usando el build compilado en `dist/` (para producción) |
+
+Reglas:
+- **Nunca edites a mano una migración ya commiteada y ya corrida en algún ambiente** — si te
+  equivocaste, generá una migración nueva que corrija lo que haga falta.
+- Commiteá siempre el archivo de migración junto con el cambio de entity que lo generó, en el
+  mismo PR.
+- Antes de levantar el proyecto por primera vez (o después de un `git pull` con migraciones
+  nuevas), corré `npm run migration:run`.
 
 ## Autenticación
 
