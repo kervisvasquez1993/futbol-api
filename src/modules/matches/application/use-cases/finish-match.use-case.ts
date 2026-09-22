@@ -5,10 +5,14 @@ import {
   NotFoundError,
 } from '../../../../shared/errors/domain-errors';
 import { MatchStatus } from '../../domain/enums/match-status.enum';
+import { MatchLifecycleService } from '../services/match-lifecycle.service';
 
 @Injectable()
 export class FinishMatchUseCase {
-  constructor(private readonly matchRepository: MatchRepository) {}
+  constructor(
+    private readonly matchRepository: MatchRepository,
+    private readonly matchLifecycleService: MatchLifecycleService,
+  ) {}
 
   async execute(id: string) {
     const match = await this.matchRepository.findById(id);
@@ -21,7 +25,6 @@ export class FinishMatchUseCase {
       throw new ConflictError('El partido ya está finalizado');
     }
 
-    match.status = MatchStatus.FINALIZADO;
-    return this.matchRepository.save(match);
+    return this.matchLifecycleService.finish(match);
   }
 }

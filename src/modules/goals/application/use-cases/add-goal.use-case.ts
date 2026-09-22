@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GoalRepository } from '../../domain/ports/goal.repository';
+import { MatchLifecycleService } from '../../../matches/application/services/match-lifecycle.service';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import {
   ConflictError,
@@ -12,6 +13,7 @@ export class AddGoalUseCase {
   constructor(
     private readonly goalRepository: GoalRepository,
     private readonly matchRepository: MatchRepository,
+    private readonly matchLifecycleService: MatchLifecycleService,
   ) {}
 
   async execute(matchId: string, dto: CreateGoalDto) {
@@ -45,11 +47,26 @@ export class AddGoalUseCase {
       }
     }
 
-    return this.goalRepository.create({
+    const goal = await this.goalRepository.create({
       matchId,
       scorerId: dto.scorerId,
       assistId: dto.assistId ?? null,
       minute: dto.minute ?? null,
     });
+
+    const scorerTeam = match.participants.find(
+      (participant) => participant.playerId === dto.scorerId,
+    )?.team;
+
+    if (scorerTeam) {
+      const updatedMatch = await this.matchRepository.adjustScore(
+        matchId,
+        scorerTeam,
+        1,
+      );
+      await this.matchLifecycleService.checkCriteria(updatedMatch);
+    }
+
+    return goal;
   }
 }

@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { PlayersModule } from './modules/players/players.module';
 import { MatchesModule } from './modules/matches/matches.module';
+import { MatchSessionsModule } from './modules/match-sessions/match-sessions.module';
 import { GoalsModule } from './modules/goals/goals.module';
 import { StatsModule } from './modules/stats/stats.module';
 
@@ -24,6 +25,7 @@ import { StatsModule } from './modules/stats/stats.module';
     UsersModule,
     PlayersModule,
     MatchesModule,
+    MatchSessionsModule,
     GoalsModule,
     StatsModule,
   ],

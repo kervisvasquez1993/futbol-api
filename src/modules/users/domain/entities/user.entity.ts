@@ -2,8 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Player } from '../../../players/domain/entities/player.entity';
 import { UserRole } from '../../../../shared/enums/user-role.enum';
 
 @Entity('users')
@@ -26,6 +29,13 @@ export class User {
     default: UserRole.MEMBER,
   })
   role: UserRole;
+
+  @Column({ name: 'player_id', nullable: true, unique: true })
+  playerId: string | null;
+
+  @OneToOne(() => Player, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'player_id' })
+  player: Player | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

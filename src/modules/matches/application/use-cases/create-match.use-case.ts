@@ -35,6 +35,8 @@ export class CreateMatchUseCase {
       status: MatchStatus.EN_CURSO,
       homeTeamName: dto.homeTeamName ?? 'Equipo A',
       awayTeamName: dto.awayTeamName ?? 'Equipo B',
+      durationMinutes: dto.durationMinutes ?? null,
+      goalLimit: dto.goalLimit ?? null,
       participants: dto.participants.map((participant) => ({
         playerId: participant.playerId,
         team: participant.team,

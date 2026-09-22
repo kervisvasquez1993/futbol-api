@@ -28,6 +28,14 @@ export class TypeOrmMatchRepository implements MatchRepository {
     });
   }
 
+  findAllBySessionId(sessionId: string): Promise<Match[]> {
+    return this.repository.find({
+      where: { sessionId },
+      relations: { participants: { player: true } },
+      order: { createdAt: 'ASC' },
+    });
+  }
+
   async create(data: DeepPartial<Match>): Promise<Match> {
     const match = this.repository.create(data);
     return this.repository.save(match);

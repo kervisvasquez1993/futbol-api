@@ -4,9 +4,11 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -45,4 +47,14 @@ export class CreateMatchDto {
   @ValidateNested({ each: true })
   @Type(() => MatchParticipantInputDto)
   participants: MatchParticipantInputDto[];
+
+  @IsOptional()
+  @IsInt({ message: 'La duración debe ser un número entero de minutos' })
+  @Min(1, { message: 'La duración debe ser al menos 1 minuto' })
+  durationMinutes?: number;
+
+  @IsOptional()
+  @IsInt({ message: 'El límite de goles debe ser un número entero' })
+  @Min(1, { message: 'El límite de goles debe ser al menos 1' })
+  goalLimit?: number;
 }
