@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
@@ -15,6 +16,7 @@ import { AdjustMatchScoreDto } from '../application/dtos/adjust-match-score.dto'
 import { CreateMatchDto } from '../application/dtos/create-match.dto';
 import { JoinMatchDto } from '../application/dtos/join-match.dto';
 import { SetMatchResultDto } from '../application/dtos/set-match-result.dto';
+import { MatchEventStreamService } from '../application/services/match-event-stream.service';
 import { AddParticipantUseCase } from '../application/use-cases/add-participant.use-case';
 import { AdjustMatchScoreUseCase } from '../application/use-cases/adjust-match-score.use-case';
 import { CreateMatchUseCase } from '../application/use-cases/create-match.use-case';
@@ -35,6 +37,7 @@ export class MatchesController {
     private readonly joinMatchUseCase: JoinMatchUseCase,
     private readonly setMatchResultUseCase: SetMatchResultUseCase,
     private readonly adjustMatchScoreUseCase: AdjustMatchScoreUseCase,
+    private readonly matchEventStreamService: MatchEventStreamService,
   ) {}
 
   @Get()
@@ -45,6 +48,11 @@ export class MatchesController {
   @Get(':id')
   get(@Param('id') id: string) {
     return this.getMatchUseCase.execute(id);
+  }
+
+  @Sse(':id/events')
+  events(@Param('id') id: string) {
+    return this.matchEventStreamService.stream(id);
   }
 
   @UseGuards(JwtAuthGuard)

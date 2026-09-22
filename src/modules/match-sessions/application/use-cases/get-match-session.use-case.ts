@@ -3,6 +3,7 @@ import { NotFoundError } from '../../../../shared/errors/domain-errors';
 import { MatchLifecycleService } from '../../../matches/application/services/match-lifecycle.service';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
+import { withQueue } from '../helpers/session-response.helper';
 
 @Injectable()
 export class GetMatchSessionUseCase {
@@ -33,6 +34,11 @@ export class GetMatchSessionUseCase {
       }
     }
 
-    return { session, matches };
+    const freshSession =
+      matches.length > 0
+        ? ((await this.matchSessionRepository.findById(id)) ?? session)
+        : session;
+
+    return { session: withQueue(freshSession), matches };
   }
 }

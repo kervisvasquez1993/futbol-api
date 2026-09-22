@@ -1,9 +1,9 @@
 import { Type } from 'class-transformer';
 import {
-  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -12,6 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.enum';
 
 export class SessionTeamInputDto {
   @IsString({ message: 'El nombre del equipo debe ser un texto' })
@@ -29,8 +30,15 @@ export class CreateMatchSessionDto {
   @MinLength(1, { message: 'El nombre es obligatorio' })
   name: string;
 
+  @IsOptional()
   @IsDateString({}, { message: 'La fecha debe ser una fecha válida' })
-  date: string;
+  date?: string;
+
+  @IsOptional()
+  @IsEnum(SessionRotationMode, {
+    message: 'rotationMode debe ser "manual" o "winner_stays"',
+  })
+  rotationMode?: SessionRotationMode;
 
   @IsOptional()
   @IsInt({ message: 'La duración debe ser un número entero de minutos' })
@@ -44,7 +52,6 @@ export class CreateMatchSessionDto {
 
   @IsArray({ message: 'Los equipos deben ser una lista' })
   @ArrayMinSize(2, { message: 'La jornada debe tener al menos 2 equipos' })
-  @ArrayMaxSize(3, { message: 'La jornada admite máximo 3 equipos' })
   @ValidateNested({ each: true })
   @Type(() => SessionTeamInputDto)
   teams: SessionTeamInputDto[];

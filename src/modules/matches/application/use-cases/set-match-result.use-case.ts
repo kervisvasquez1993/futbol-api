@@ -27,6 +27,7 @@ export class SetMatchResultUseCase {
     // Permite desempatar manualmente una ronda de jornada ya finalizada
     // y disparar el avance (rotación de equipos) con el resultado corregido.
     await this.matchLifecycleService.advanceIfNeeded(updated);
+    this.matchLifecycleService.notifyChanged(updated);
 
     return updated;
   }

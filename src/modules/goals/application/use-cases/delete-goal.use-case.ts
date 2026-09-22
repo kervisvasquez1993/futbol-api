@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GoalRepository } from '../../domain/ports/goal.repository';
 import { NotFoundError } from '../../../../shared/errors/domain-errors';
+import { MatchLifecycleService } from '../../../matches/application/services/match-lifecycle.service';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class DeleteGoalUseCase {
   constructor(
     private readonly goalRepository: GoalRepository,
     private readonly matchRepository: MatchRepository,
+    private readonly matchLifecycleService: MatchLifecycleService,
   ) {}
 
   async execute(id: string): Promise<void> {
@@ -25,7 +27,12 @@ export class DeleteGoalUseCase {
     )?.team;
 
     if (scorerTeam) {
-      await this.matchRepository.adjustScore(goal.matchId, scorerTeam, -1);
+      const updatedMatch = await this.matchRepository.adjustScore(
+        goal.matchId,
+        scorerTeam,
+        -1,
+      );
+      this.matchLifecycleService.notifyChanged(updatedMatch);
     }
   }
 }

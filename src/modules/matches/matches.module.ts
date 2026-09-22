@@ -7,6 +7,9 @@ import { MatchParticipant } from './domain/entities/match-participant.entity';
 import { Match } from './domain/entities/match.entity';
 import { MatchRepository } from './domain/ports/match.repository';
 import { TypeOrmMatchRepository } from './infrastructure/repositories/typeorm-match.repository';
+import { MatchEventStreamService } from './application/services/match-event-stream.service';
+import { MatchEventsService } from './application/services/match-events.service';
+import { MatchExpiryWatcherService } from './application/services/match-expiry-watcher.service';
 import { MatchLifecycleService } from './application/services/match-lifecycle.service';
 import { AddParticipantUseCase } from './application/use-cases/add-participant.use-case';
 import { AdjustMatchScoreUseCase } from './application/use-cases/adjust-match-score.use-case';
@@ -36,6 +39,9 @@ import { MatchesController } from './presentation/matches.controller';
     SetMatchResultUseCase,
     AdjustMatchScoreUseCase,
     MatchLifecycleService,
+    MatchEventsService,
+    MatchEventStreamService,
+    MatchExpiryWatcherService,
     { provide: MatchRepository, useClass: TypeOrmMatchRepository },
   ],
   exports: [MatchRepository, MatchLifecycleService],

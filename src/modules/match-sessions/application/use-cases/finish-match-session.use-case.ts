@@ -8,6 +8,8 @@ import { MatchStatus } from '../../../matches/domain/enums/match-status.enum';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import { MatchSessionStatus } from '../../domain/enums/match-session-status.enum';
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
+import { withQueue } from '../helpers/session-response.helper';
+import { SessionEventsService } from '../services/session-events.service';
 
 @Injectable()
 export class FinishMatchSessionUseCase {
@@ -15,6 +17,7 @@ export class FinishMatchSessionUseCase {
     private readonly matchSessionRepository: MatchSessionRepository,
     private readonly matchRepository: MatchRepository,
     private readonly matchLifecycleService: MatchLifecycleService,
+    private readonly sessionEventsService: SessionEventsService,
   ) {}
 
   async execute(id: string) {
@@ -40,6 +43,8 @@ export class FinishMatchSessionUseCase {
       await this.matchLifecycleService.finish(lastMatch);
     }
 
-    return savedSession;
+    this.sessionEventsService.emit(id);
+
+    return withQueue(savedSession);
   }
 }

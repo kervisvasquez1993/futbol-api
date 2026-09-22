@@ -64,7 +64,9 @@ export class AddGoalUseCase {
         scorerTeam,
         1,
       );
-      await this.matchLifecycleService.checkCriteria(updatedMatch);
+      const checkedMatch =
+        await this.matchLifecycleService.checkCriteria(updatedMatch);
+      this.matchLifecycleService.notifyChanged(checkedMatch);
     }
 
     return goal;

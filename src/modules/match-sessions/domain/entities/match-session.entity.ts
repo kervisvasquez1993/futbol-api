@@ -6,6 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { MatchSessionStatus } from '../enums/match-session-status.enum';
+import { SessionRotationMode } from '../enums/session-rotation-mode.enum';
 import { SessionTeam } from './session-team.entity';
 
 @Entity('match_sessions')
@@ -31,6 +32,14 @@ export class MatchSession {
 
   @Column({ name: 'goal_limit', type: 'int', nullable: true })
   goalLimit: number | null;
+
+  @Column({
+    name: 'rotation_mode',
+    type: 'enum',
+    enum: SessionRotationMode,
+    default: SessionRotationMode.MANUAL,
+  })
+  rotationMode: SessionRotationMode;
 
   @OneToMany(() => SessionTeam, (team) => team.session, { cascade: true })
   teams: SessionTeam[];

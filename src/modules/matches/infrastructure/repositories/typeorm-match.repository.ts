@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, IsNull, Not, Repository } from 'typeorm';
 import { MatchParticipant } from '../../domain/entities/match-participant.entity';
 import { Match } from '../../domain/entities/match.entity';
+import { MatchStatus } from '../../domain/enums/match-status.enum';
 import { MatchTeamSide } from '../../domain/enums/match-team-side.enum';
 import { MatchRepository } from '../../domain/ports/match.repository';
 
@@ -33,6 +34,13 @@ export class TypeOrmMatchRepository implements MatchRepository {
       where: { sessionId },
       relations: { participants: { player: true } },
       order: { createdAt: 'ASC' },
+    });
+  }
+
+  findActiveWithDuration(): Promise<Match[]> {
+    return this.repository.find({
+      where: { status: MatchStatus.EN_CURSO, durationMinutes: Not(IsNull()) },
+      relations: { participants: { player: true } },
     });
   }
 

@@ -24,6 +24,8 @@ export class AdjustMatchScoreUseCase {
       dto.delta,
     );
 
-    return this.matchLifecycleService.checkCriteria(updated);
+    const checked = await this.matchLifecycleService.checkCriteria(updated);
+    this.matchLifecycleService.notifyChanged(checked);
+    return checked;
   }
 }

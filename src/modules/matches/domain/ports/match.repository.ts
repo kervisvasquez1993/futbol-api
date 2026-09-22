@@ -7,6 +7,7 @@ export abstract class MatchRepository {
   abstract findAll(): Promise<Match[]>;
   abstract findById(id: string): Promise<Match | null>;
   abstract findAllBySessionId(sessionId: string): Promise<Match[]>;
+  abstract findActiveWithDuration(): Promise<Match[]>;
   abstract create(data: DeepPartial<Match>): Promise<Match>;
   abstract save(match: Match): Promise<Match>;
   abstract addParticipant(
