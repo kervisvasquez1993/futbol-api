@@ -13,6 +13,12 @@ interface EnvVars {
   DB_NAME: string;
   JWT_SECRET: string;
   JWT_EXPIRES_IN: string;
+  AWS_ACCESS_KEY_ID?: string;
+  AWS_SECRET_ACCESS_KEY?: string;
+  AWS_DEFAULT_REGION?: string;
+  AWS_BUCKET?: string;
+  AWS_USE_PATH_STYLE_ENDPOINT?: boolean;
+  AWS_S3_PUBLIC_URL?: string;
 }
 
 const envsSchema = Joi.object<EnvVars>({
@@ -27,6 +33,18 @@ const envsSchema = Joi.object<EnvVars>({
   DB_NAME: Joi.string().required(),
   JWT_SECRET: Joi.string().required(),
   JWT_EXPIRES_IN: Joi.string().default('1d'),
+  // S3 (subida de imágenes de perfil). Opcionales a propósito: sin ellas la
+  // app arranca igual, pero el endpoint de subida (cuando exista) va a fallar
+  // recién al intentar usarlas.
+  AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
+  AWS_DEFAULT_REGION: Joi.string().allow('').optional(),
+  AWS_BUCKET: Joi.string().allow('').optional(),
+  AWS_USE_PATH_STYLE_ENDPOINT: Joi.boolean()
+    .truthy('true', '1')
+    .falsy('false', '0', '')
+    .default(false),
+  AWS_S3_PUBLIC_URL: Joi.string().allow('').optional(),
 }).unknown(true);
 
 const { error, value } = envsSchema.validate(process.env);
@@ -39,6 +57,9 @@ if (error) {
 
 const envVars = value;
 
+const awsRegion = envVars.AWS_DEFAULT_REGION || undefined;
+const awsBucket = envVars.AWS_BUCKET || undefined;
+
 export const envs = {
   nodeEnv: envVars.NODE_ENV,
   port: envVars.PORT,
@@ -49,4 +70,21 @@ export const envs = {
   dbName: envVars.DB_NAME,
   jwtSecret: envVars.JWT_SECRET,
   jwtExpiresIn: envVars.JWT_EXPIRES_IN,
+  aws: {
+    accessKeyId: envVars.AWS_ACCESS_KEY_ID || undefined,
+    secretAccessKey: envVars.AWS_SECRET_ACCESS_KEY || undefined,
+    region: awsRegion,
+    bucket: awsBucket,
+    // true para S3 compatibles (MinIO, DigitalOcean Spaces, etc.) que
+    // necesitan URLs "path-style"; false (default) para AWS S3 real.
+    usePathStyleEndpoint: envVars.AWS_USE_PATH_STYLE_ENDPOINT,
+    // Si no se define un dominio público propio (ej. CloudFront), se arma la
+    // URL directa del bucket — solo tiene sentido una vez que region/bucket
+    // estén cargados.
+    s3PublicUrl:
+      envVars.AWS_S3_PUBLIC_URL ||
+      (awsRegion && awsBucket
+        ? `https://${awsBucket}.s3.${awsRegion}.amazonaws.com`
+        : undefined),
+  },
 };

@@ -3,12 +3,19 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
+  ParseFilePipeBuilder,
   Patch,
   Post,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../../../shared/decorators/current-user.decorator';
 import { CreatePlayerDto } from '../application/dtos/create-player.dto';
 import { UpdatePlayerDto } from '../application/dtos/update-player.dto';
 import { CreatePlayerUseCase } from '../application/use-cases/create-player.use-case';
@@ -17,6 +24,9 @@ import { GetPlayerStatsUseCase } from '../application/use-cases/get-player-stats
 import { GetPlayerUseCase } from '../application/use-cases/get-player.use-case';
 import { ListPlayersUseCase } from '../application/use-cases/list-players.use-case';
 import { UpdatePlayerUseCase } from '../application/use-cases/update-player.use-case';
+import { UploadPlayerPhotoUseCase } from '../application/use-cases/upload-player-photo.use-case';
+
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
 
 @Controller('players')
 export class PlayersController {
@@ -27,6 +37,7 @@ export class PlayersController {
     private readonly updatePlayerUseCase: UpdatePlayerUseCase,
     private readonly deletePlayerUseCase: DeletePlayerUseCase,
     private readonly getPlayerStatsUseCase: GetPlayerStatsUseCase,
+    private readonly uploadPlayerPhotoUseCase: UploadPlayerPhotoUseCase,
   ) {}
 
   @Get()
@@ -52,8 +63,29 @@ export class PlayersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdatePlayerDto) {
-    return this.updatePlayerUseCase.execute(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlayerDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.updatePlayerUseCase.execute(id, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/photo')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadPhoto(
+    @Param('id') id: string,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({ fileType: /^image\/(jpeg|png|webp)$/ })
+        .addMaxSizeValidator({ maxSize: MAX_PHOTO_SIZE_BYTES })
+        .build({ errorHttpStatusCode: HttpStatus.BAD_REQUEST }),
+    )
+    file: Express.Multer.File,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.uploadPlayerPhotoUseCase.execute(id, file, user);
   }
 
   @UseGuards(JwtAuthGuard)

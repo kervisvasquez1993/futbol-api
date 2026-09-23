@@ -6,6 +6,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  playerId: string | null;
 }
 
 @Injectable()
@@ -26,6 +27,7 @@ export class JwtAuthGuard implements CanActivate {
         id: payload.sub,
         email: payload.email,
         role: payload.role,
+        playerId: payload.playerId ?? null,
       };
       return true;
     } catch {

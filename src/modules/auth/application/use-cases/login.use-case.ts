@@ -29,6 +29,7 @@ export class LoginUseCase {
       sub: user.id,
       email: user.email,
       role: user.role,
+      playerId: user.playerId,
     });
 
     const { password, ...safeUser } = user;
