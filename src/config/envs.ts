@@ -19,6 +19,11 @@ interface EnvVars {
   AWS_BUCKET?: string;
   AWS_USE_PATH_STYLE_ENDPOINT?: boolean;
   AWS_S3_PUBLIC_URL?: string;
+  MAIL_HOST?: string;
+  MAIL_PORT?: number;
+  MAIL_USER?: string;
+  MAIL_PASSWORD?: string;
+  MAIL_FROM?: string;
 }
 
 const envsSchema = Joi.object<EnvVars>({
@@ -45,6 +50,16 @@ const envsSchema = Joi.object<EnvVars>({
     .falsy('false', '0', '')
     .default(false),
   AWS_S3_PUBLIC_URL: Joi.string().allow('').optional(),
+  // Mail (recuperación de contraseña). Opcionales igual que S3: sin ellas la
+  // app arranca, pero el envío de correo falla recién al intentar usarlo.
+  // Pensado para apuntar a un inbox de Mailtrap en desarrollo.
+  MAIL_HOST: Joi.string().allow('').optional(),
+  MAIL_PORT: Joi.number().default(2525),
+  MAIL_USER: Joi.string().allow('').optional(),
+  MAIL_PASSWORD: Joi.string().allow('').optional(),
+  MAIL_FROM: Joi.string()
+    .allow('')
+    .default('no-reply@futbol-tracker.local'),
 }).unknown(true);
 
 const { error, value } = envsSchema.validate(process.env);
@@ -86,5 +101,12 @@ export const envs = {
       (awsRegion && awsBucket
         ? `https://${awsBucket}.s3.${awsRegion}.amazonaws.com`
         : undefined),
+  },
+  mail: {
+    host: envVars.MAIL_HOST || undefined,
+    port: envVars.MAIL_PORT,
+    user: envVars.MAIL_USER || undefined,
+    pass: envVars.MAIL_PASSWORD || undefined,
+    from: envVars.MAIL_FROM,
   },
 };

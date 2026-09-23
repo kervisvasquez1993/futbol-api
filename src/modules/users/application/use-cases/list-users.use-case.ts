@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from '../../domain/ports/user.repository';
+import { toSafeUser } from '../helpers/to-safe-user';
 
 @Injectable()
 export class ListUsersUseCase {
@@ -8,6 +9,6 @@ export class ListUsersUseCase {
   async execute() {
     const users = await this.userRepository.findAll();
 
-    return users.map(({ password, ...safeUser }) => safeUser);
+    return users.map(toSafeUser);
   }
 }

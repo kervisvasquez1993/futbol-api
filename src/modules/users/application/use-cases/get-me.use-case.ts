@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { UserRepository } from '../../domain/ports/user.repository';
 import { NotFoundError } from '../../../../shared/errors/domain-errors';
+import { toSafeUser } from '../helpers/to-safe-user';
 
 @Injectable()
 export class GetMeUseCase {
@@ -13,7 +14,6 @@ export class GetMeUseCase {
       throw new NotFoundError('Usuario no encontrado');
     }
 
-    const { password, ...safeUser } = user;
-    return safeUser;
+    return toSafeUser(user);
   }
 }

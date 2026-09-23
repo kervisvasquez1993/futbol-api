@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from '../../../users/domain/ports/user.repository';
+import { toSafeUser } from '../../../users/application/helpers/to-safe-user';
 import { UnauthorizedError } from '../../../../shared/errors/domain-errors';
 import { LoginDto } from '../dtos/login.dto';
 
@@ -32,11 +33,9 @@ export class LoginUseCase {
       playerId: user.playerId,
     });
 
-    const { password, ...safeUser } = user;
-
     return {
       accessToken,
-      user: safeUser,
+      user: toSafeUser(user),
     };
   }
 }

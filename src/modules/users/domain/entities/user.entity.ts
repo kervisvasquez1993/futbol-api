@@ -37,6 +37,16 @@ export class User {
   @JoinColumn({ name: 'player_id' })
   player: Player | null;
 
+  @Column({ name: 'password_reset_code_hash', type: 'text', nullable: true })
+  passwordResetCodeHash: string | null;
+
+  @Column({
+    name: 'password_reset_code_expires_at',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  passwordResetCodeExpiresAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

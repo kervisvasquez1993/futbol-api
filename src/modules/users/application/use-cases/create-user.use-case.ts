@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from '../../domain/ports/user.repository';
+import { toSafeUser } from '../helpers/to-safe-user';
 import { UserRole } from '../../../../shared/enums/user-role.enum';
 import { ConflictError } from '../../../../shared/errors/domain-errors';
 import { CreateUserDto } from '../dtos/create-user.dto';
@@ -27,7 +28,6 @@ export class CreateUserUseCase {
       role: dto.role ?? UserRole.MEMBER,
     });
 
-    const { password, ...safeUser } = user;
-    return safeUser;
+    return toSafeUser(user);
   }
 }

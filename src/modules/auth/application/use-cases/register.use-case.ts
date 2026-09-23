@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from '../../../users/domain/ports/user.repository';
+import { toSafeUser } from '../../../users/application/helpers/to-safe-user';
 import { PlayerRepository } from '../../../players/domain/ports/player.repository';
 import { UserRole } from '../../../../shared/enums/user-role.enum';
 import { ConflictError } from '../../../../shared/errors/domain-errors';
@@ -41,7 +42,6 @@ export class RegisterUseCase {
       playerId,
     });
 
-    const { password, ...safeUser } = user;
-    return safeUser;
+    return toSafeUser(user);
   }
 }

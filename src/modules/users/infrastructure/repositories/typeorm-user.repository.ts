@@ -31,4 +31,9 @@ export class TypeOrmUserRepository implements UserRepository {
     const user = this.repository.create(data);
     return this.repository.save(user);
   }
+
+  async update(id: string, data: Partial<User>): Promise<User> {
+    await this.repository.update(id, data);
+    return (await this.findById(id)) as User;
+  }
 }
