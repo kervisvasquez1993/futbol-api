@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { MatchSessionStatus } from '../enums/match-session-status.enum';
 import { SessionRotationMode } from '../enums/session-rotation-mode.enum';
+import { SessionAttendee } from './session-attendee.entity';
 import { SessionTeam } from './session-team.entity';
 
 @Entity('match_sessions')
@@ -43,6 +44,9 @@ export class MatchSession {
 
   @OneToMany(() => SessionTeam, (team) => team.session, { cascade: true })
   teams: SessionTeam[];
+
+  @OneToMany(() => SessionAttendee, (attendee) => attendee.session)
+  attendees: SessionAttendee[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

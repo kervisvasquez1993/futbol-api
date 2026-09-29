@@ -8,6 +8,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
+import { AdminGuard } from '../../../shared/guards/admin.guard';
+import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
+import type { CurrentUserPayload } from '../../../shared/decorators/current-user.decorator';
 import { CreateGoalDto } from '../application/dtos/create-goal.dto';
 import { AddGoalUseCase } from '../application/use-cases/add-goal.use-case';
 import { DeleteGoalUseCase } from '../application/use-cases/delete-goal.use-case';
@@ -35,11 +38,15 @@ export class GoalsController {
 
   @UseGuards(JwtAuthGuard)
   @Post('matches/:matchId/goals')
-  create(@Param('matchId') matchId: string, @Body() dto: CreateGoalDto) {
-    return this.addGoalUseCase.execute(matchId, dto);
+  create(
+    @Param('matchId') matchId: string,
+    @Body() dto: CreateGoalDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.addGoalUseCase.execute(matchId, dto, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Delete('goals/:id')
   delete(@Param('id') id: string) {
     return this.deleteGoalUseCase.execute(id);

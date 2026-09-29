@@ -11,8 +11,40 @@ export class TypeOrmPlayerRepository implements PlayerRepository {
     private readonly repository: Repository<Player>,
   ) {}
 
+  // Plantel: los invitados quedan afuera.
   findAll(): Promise<Player[]> {
-    return this.repository.find();
+    return this.repository.find({ where: { isGuest: false } });
+  }
+
+  findUnclaimedGuests(): Promise<Player[]> {
+    return this.repository
+      .createQueryBuilder('player')
+      .select([
+        'player.id',
+        'player.name',
+        'player.imageUrl',
+        'player.isGuest',
+        'player.createdAt',
+      ])
+      .where('player.isGuest = true')
+      .andWhere(
+        'NOT EXISTS (SELECT 1 FROM users u WHERE u.player_id = player.id)',
+      )
+      .orderBy('player.name', 'ASC')
+      .getMany();
+  }
+
+  // Jugó algún partido, estuvo en un equipo o confirmó asistencia a alguna jornada.
+  async hasHistory(id: string): Promise<boolean> {
+    const [row] = await this.repository.query(
+      `SELECT
+         EXISTS (SELECT 1 FROM match_participants WHERE player_id = $1)
+         OR EXISTS (SELECT 1 FROM session_team_players WHERE player_id = $1)
+         OR EXISTS (SELECT 1 FROM session_attendees WHERE player_id = $1)
+         AS "hasHistory"`,
+      [id],
+    );
+    return row.hasHistory;
   }
 
   findById(id: string): Promise<Player | null> {

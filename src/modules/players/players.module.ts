@@ -8,6 +8,7 @@ import { CreatePlayerUseCase } from './application/use-cases/create-player.use-c
 import { DeletePlayerUseCase } from './application/use-cases/delete-player.use-case';
 import { GetPlayerStatsUseCase } from './application/use-cases/get-player-stats.use-case';
 import { GetPlayerUseCase } from './application/use-cases/get-player.use-case';
+import { ListGuestPlayersUseCase } from './application/use-cases/list-guest-players.use-case';
 import { ListPlayersUseCase } from './application/use-cases/list-players.use-case';
 import { UpdatePlayerUseCase } from './application/use-cases/update-player.use-case';
 import { UploadPlayerPhotoUseCase } from './application/use-cases/upload-player-photo.use-case';
@@ -19,6 +20,7 @@ import { PlayersController } from './presentation/players.controller';
   providers: [
     CreatePlayerUseCase,
     ListPlayersUseCase,
+    ListGuestPlayersUseCase,
     GetPlayerUseCase,
     UpdatePlayerUseCase,
     DeletePlayerUseCase,

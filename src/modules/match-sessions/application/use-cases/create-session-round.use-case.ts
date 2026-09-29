@@ -33,6 +33,12 @@ export class CreateSessionRoundUseCase {
       throw new ConflictError('La jornada ya está finalizada');
     }
 
+    if (session.status === MatchSessionStatus.CONVOCATORIA) {
+      throw new ConflictError(
+        'La jornada todavía está en convocatoria: empezala con /start',
+      );
+    }
+
     if (dto.homeSessionTeamId === dto.awaySessionTeamId) {
       throw new ValidationError('Los equipos deben ser distintos');
     }

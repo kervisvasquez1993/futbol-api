@@ -27,6 +27,24 @@ export class RegisterUseCase {
     const isFirstUser = usersCount === 0;
     const hashedPassword = await bcrypt.hash(dto.password, SALT_ROUNDS);
 
+    const userData = {
+      email: dto.email,
+      password: hashedPassword,
+      name: dto.name,
+      role: isFirstUser ? UserRole.ADMIN : UserRole.MEMBER,
+    };
+
+    if (dto.guestPlayerId) {
+      // Reclama al invitado: conserva goles, partidos y asistencias sin
+      // migrar nada, porque todo referencia al mismo playerId.
+      const user = await this.userRepository.createClaimingGuest(
+        userData,
+        dto.guestPlayerId,
+        dto.name,
+      );
+      return toSafeUser(user);
+    }
+
     let playerId: string | null = null;
 
     if (!isFirstUser) {
@@ -34,13 +52,7 @@ export class RegisterUseCase {
       playerId = player.id;
     }
 
-    const user = await this.userRepository.create({
-      email: dto.email,
-      password: hashedPassword,
-      name: dto.name,
-      role: isFirstUser ? UserRole.ADMIN : UserRole.MEMBER,
-      playerId,
-    });
+    const user = await this.userRepository.create({ ...userData, playerId });
 
     return toSafeUser(user);
   }

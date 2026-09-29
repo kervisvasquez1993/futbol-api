@@ -21,9 +21,11 @@ interface EnvVars {
   AWS_S3_PUBLIC_URL?: string;
   MAIL_HOST?: string;
   MAIL_PORT?: number;
+  MAIL_ENCRYPTION?: string;
   MAIL_USER?: string;
   MAIL_PASSWORD?: string;
   MAIL_FROM?: string;
+  MAIL_FROM_NAME?: string;
 }
 
 const envsSchema = Joi.object<EnvVars>({
@@ -55,11 +57,19 @@ const envsSchema = Joi.object<EnvVars>({
   // Pensado para apuntar a un inbox de Mailtrap en desarrollo.
   MAIL_HOST: Joi.string().allow('').optional(),
   MAIL_PORT: Joi.number().default(2525),
+  // 'ssl' = TLS implícito desde el inicio de la conexión (típico puerto 465,
+  // el que usa Resend); 'tls' = STARTTLS (típico puerto 587); vacío = sin
+  // cifrado explícito (Mailtrap sandbox no lo necesita).
+  MAIL_ENCRYPTION: Joi.string()
+    .valid('ssl', 'tls', '')
+    .optional()
+    .allow(''),
   MAIL_USER: Joi.string().allow('').optional(),
   MAIL_PASSWORD: Joi.string().allow('').optional(),
   MAIL_FROM: Joi.string()
     .allow('')
     .default('no-reply@futbol-tracker.local'),
+  MAIL_FROM_NAME: Joi.string().allow('').default('Futbol Tracker'),
 }).unknown(true);
 
 const { error, value } = envsSchema.validate(process.env);
@@ -105,8 +115,14 @@ export const envs = {
   mail: {
     host: envVars.MAIL_HOST || undefined,
     port: envVars.MAIL_PORT,
+    // 'ssl' | 'tls' | undefined (sin cifrado explícito)
+    encryption: (envVars.MAIL_ENCRYPTION || undefined) as
+      | 'ssl'
+      | 'tls'
+      | undefined,
     user: envVars.MAIL_USER || undefined,
     pass: envVars.MAIL_PASSWORD || undefined,
     from: envVars.MAIL_FROM,
+    fromName: envVars.MAIL_FROM_NAME,
   },
 };

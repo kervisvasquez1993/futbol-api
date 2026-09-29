@@ -11,6 +11,15 @@ export abstract class MatchSessionRepository {
     sessionId: string,
     data: DeepPartial<SessionTeam>,
   ): Promise<MatchSession>;
+  abstract addAttendee(sessionId: string, playerId: string): Promise<void>;
+  abstract removeAttendee(sessionId: string, playerId: string): Promise<void>;
+  // Pasa la jornada de 'convocatoria' a 'en_curso' con sus equipos. Devuelve
+  // null si ya no estaba en convocatoria (otro admin la empezó antes).
+  abstract start(
+    sessionId: string,
+    data: Pick<MatchSession, 'rotationMode' | 'durationMinutes' | 'goalLimit'>,
+    teams: DeepPartial<SessionTeam>[],
+  ): Promise<MatchSession | null>;
   abstract updateTeamQueuePosition(
     sessionTeamId: string,
     queuePosition: number | null,

@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
+import { AdminGuard } from '../../../shared/guards/admin.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../../../shared/decorators/current-user.decorator';
 import { AddParticipantDto } from '../application/dtos/add-participant.dto';
@@ -55,7 +56,7 @@ export class MatchesController {
     return this.matchEventStreamService.stream(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post()
   create(@Body() dto: CreateMatchDto) {
     return this.createMatchUseCase.execute(dto);
@@ -63,11 +64,11 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/finish')
-  finish(@Param('id') id: string) {
-    return this.finishMatchUseCase.execute(id);
+  finish(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.finishMatchUseCase.execute(id, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post(':id/participants')
   addParticipant(@Param('id') id: string, @Body() dto: AddParticipantDto) {
     return this.addParticipantUseCase.execute(id, dto);
@@ -83,7 +84,7 @@ export class MatchesController {
     return this.joinMatchUseCase.execute(id, user.id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Patch(':id/result')
   setResult(@Param('id') id: string, @Body() dto: SetMatchResultDto) {
     return this.setMatchResultUseCase.execute(id, dto);
@@ -91,7 +92,11 @@ export class MatchesController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/score')
-  adjustScore(@Param('id') id: string, @Body() dto: AdjustMatchScoreDto) {
-    return this.adjustMatchScoreUseCase.execute(id, dto);
+  adjustScore(
+    @Param('id') id: string,
+    @Body() dto: AdjustMatchScoreDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.adjustMatchScoreUseCase.execute(id, dto, user);
   }
 }

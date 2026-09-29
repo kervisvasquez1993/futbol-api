@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { GoalRepository } from '../../domain/ports/goal.repository';
 import { MatchLifecycleService } from '../../../matches/application/services/match-lifecycle.service';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
+import { assertCanOperateMatch } from '../../../matches/application/helpers/assert-can-operate-match';
+import { CurrentUserPayload } from '../../../../shared/decorators/current-user.decorator';
 import {
   ConflictError,
   ValidationError,
@@ -16,12 +18,22 @@ export class AddGoalUseCase {
     private readonly matchLifecycleService: MatchLifecycleService,
   ) {}
 
-  async execute(matchId: string, dto: CreateGoalDto) {
+  async execute(
+    matchId: string,
+    dto: CreateGoalDto,
+    currentUser: CurrentUserPayload,
+  ) {
     const match = await this.matchRepository.findById(matchId);
 
     if (!match) {
       throw new ConflictError('El partido no existe');
     }
+
+    assertCanOperateMatch(
+      currentUser,
+      match,
+      'Solo los jugadores de este partido pueden cargar goles',
+    );
 
     const participantIds = new Set(
       match.participants.map((participant) => participant.playerId),

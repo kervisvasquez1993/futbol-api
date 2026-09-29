@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
+import { AdminGuard } from '../../../shared/guards/admin.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../../../shared/decorators/current-user.decorator';
 import { CreatePlayerDto } from '../application/dtos/create-player.dto';
@@ -22,6 +23,7 @@ import { CreatePlayerUseCase } from '../application/use-cases/create-player.use-
 import { DeletePlayerUseCase } from '../application/use-cases/delete-player.use-case';
 import { GetPlayerStatsUseCase } from '../application/use-cases/get-player-stats.use-case';
 import { GetPlayerUseCase } from '../application/use-cases/get-player.use-case';
+import { ListGuestPlayersUseCase } from '../application/use-cases/list-guest-players.use-case';
 import { ListPlayersUseCase } from '../application/use-cases/list-players.use-case';
 import { UpdatePlayerUseCase } from '../application/use-cases/update-player.use-case';
 import { UploadPlayerPhotoUseCase } from '../application/use-cases/upload-player-photo.use-case';
@@ -33,6 +35,7 @@ export class PlayersController {
   constructor(
     private readonly createPlayerUseCase: CreatePlayerUseCase,
     private readonly listPlayersUseCase: ListPlayersUseCase,
+    private readonly listGuestPlayersUseCase: ListGuestPlayersUseCase,
     private readonly getPlayerUseCase: GetPlayerUseCase,
     private readonly updatePlayerUseCase: UpdatePlayerUseCase,
     private readonly deletePlayerUseCase: DeletePlayerUseCase,
@@ -45,6 +48,12 @@ export class PlayersController {
     return this.listPlayersUseCase.execute();
   }
 
+  // Público: lo usa la pantalla de registro para reclamar un invitado.
+  @Get('guests')
+  listGuests() {
+    return this.listGuestPlayersUseCase.execute();
+  }
+
   @Get(':id/stats')
   getStats(@Param('id') id: string) {
     return this.getPlayerStatsUseCase.execute(id);
@@ -55,7 +64,7 @@ export class PlayersController {
     return this.getPlayerUseCase.execute(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Post()
   create(@Body() dto: CreatePlayerDto) {
     return this.createPlayerUseCase.execute(dto);
@@ -88,7 +97,7 @@ export class PlayersController {
     return this.uploadPlayerPhotoUseCase.execute(id, file, user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @Delete(':id')
   delete(@Param('id') id: string) {
     return this.deletePlayerUseCase.execute(id);

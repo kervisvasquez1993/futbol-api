@@ -31,8 +31,15 @@ export class AddSessionTeamUseCase {
       throw new ConflictError('La jornada ya está finalizada');
     }
 
+    if (session.status === MatchSessionStatus.CONVOCATORIA) {
+      throw new ConflictError(
+        'La jornada todavía está en convocatoria: empezala con /start',
+      );
+    }
+
     const nameTaken = session.teams.some(
-      (team) => team.name.trim().toLowerCase() === dto.name.trim().toLowerCase(),
+      (team) =>
+        team.name.trim().toLowerCase() === dto.name.trim().toLowerCase(),
     );
     if (nameTaken) {
       throw new ValidationError(

@@ -50,9 +50,11 @@ export class CreateMatchSessionDto {
   @Min(1, { message: 'El límite de goles debe ser al menos 1' })
   goalLimit?: number;
 
+  // Sin equipos (o vacío) la jornada arranca en 'convocatoria'; el mínimo de
+  // 2 equipos se valida en el caso de uso cuando vienen.
+  @IsOptional()
   @IsArray({ message: 'Los equipos deben ser una lista' })
-  @ArrayMinSize(2, { message: 'La jornada debe tener al menos 2 equipos' })
   @ValidateNested({ each: true })
   @Type(() => SessionTeamInputDto)
-  teams: SessionTeamInputDto[];
+  teams?: SessionTeamInputDto[];
 }

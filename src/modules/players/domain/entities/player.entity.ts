@@ -57,6 +57,11 @@ export class Player {
   })
   weightKg: number | null;
 
+  // Invitado sin cuenta que el admin suma a una jornada. Deja de serlo cuando
+  // alguien lo reclama al registrarse.
+  @Column({ name: 'is_guest', type: 'boolean', default: false })
+  isGuest: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
