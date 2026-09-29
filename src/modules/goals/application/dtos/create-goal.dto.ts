@@ -1,4 +1,11 @@
-import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsUUID,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class CreateGoalDto {
   @IsUUID('all', { message: 'El goleador debe ser un id válido' })
@@ -13,4 +20,9 @@ export class CreateGoalDto {
   @Min(0, { message: 'El minuto no puede ser negativo' })
   @Max(130, { message: 'El minuto no puede ser mayor a 130' })
   minute?: number;
+
+  // false = solo registra el autor de un gol que ya estaba en el marcador.
+  @IsOptional()
+  @IsBoolean({ message: 'addToScore debe ser true o false' })
+  addToScore?: boolean;
 }

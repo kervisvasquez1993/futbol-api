@@ -22,7 +22,17 @@ export class DeleteGoalUseCase {
     await this.goalRepository.delete(id);
 
     const match = await this.matchRepository.findById(goal.matchId);
-    const scorerTeam = match?.participants.find(
+
+    if (!match) return;
+
+    // Un gol que no sumó al marcador vuelve a quedar "sin autor": se borra el
+    // autor, no el gol.
+    if (!goal.addedToScore) {
+      this.matchLifecycleService.notifyChanged(match);
+      return;
+    }
+
+    const scorerTeam = match.participants.find(
       (participant) => participant.playerId === goal.scorerId,
     )?.team;
 

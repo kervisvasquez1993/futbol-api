@@ -38,6 +38,11 @@ export class Goal {
   @Column({ type: 'smallint', nullable: true })
   minute: number | null;
 
+  // false si se registró solo el autor de un gol ya sumado con el +/− del
+  // marcador; al borrarlo no hay que restar nada.
+  @Column({ name: 'added_to_score', type: 'boolean', default: true })
+  addedToScore: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
