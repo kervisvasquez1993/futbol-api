@@ -34,13 +34,15 @@ export class TypeOrmPlayerRepository implements PlayerRepository {
       .getMany();
   }
 
-  // Jugó algún partido, estuvo en un equipo o confirmó asistencia a alguna jornada.
+  // Jugó algún partido, estuvo en un equipo, confirmó asistencia a alguna
+  // jornada o tiene estadísticas cargadas a mano.
   async hasHistory(id: string): Promise<boolean> {
     const [row] = await this.repository.query(
       `SELECT
          EXISTS (SELECT 1 FROM match_participants WHERE player_id = $1)
          OR EXISTS (SELECT 1 FROM session_team_players WHERE player_id = $1)
          OR EXISTS (SELECT 1 FROM session_attendees WHERE player_id = $1)
+         OR EXISTS (SELECT 1 FROM session_player_stats WHERE player_id = $1)
          AS "hasHistory"`,
       [id],
     );

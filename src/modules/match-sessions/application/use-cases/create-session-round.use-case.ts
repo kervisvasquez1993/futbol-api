@@ -10,6 +10,7 @@ import { MatchSessionStatus } from '../../domain/enums/match-session-status.enum
 import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.enum';
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
 import { CreateSessionRoundDto } from '../dtos/create-session-round.dto';
+import { assertHasNoManualStats } from '../helpers/manual-stats-rules.helper';
 import { SessionEventsService } from '../services/session-events.service';
 import { SessionRoundFactory } from '../services/session-round.factory';
 
@@ -38,6 +39,8 @@ export class CreateSessionRoundUseCase {
         'La jornada todavía está en convocatoria: empezala con /start',
       );
     }
+
+    assertHasNoManualStats(session);
 
     if (dto.homeSessionTeamId === dto.awaySessionTeamId) {
       throw new ValidationError('Los equipos deben ser distintos');

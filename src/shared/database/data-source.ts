@@ -8,6 +8,7 @@ import { MatchSession } from '../../modules/match-sessions/domain/entities/match
 import { SessionTeam } from '../../modules/match-sessions/domain/entities/session-team.entity';
 import { SessionTeamPlayer } from '../../modules/match-sessions/domain/entities/session-team-player.entity';
 import { SessionAttendee } from '../../modules/match-sessions/domain/entities/session-attendee.entity';
+import { SessionPlayerStat } from '../../modules/match-sessions/domain/entities/session-player-stat.entity';
 import { Goal } from '../../modules/goals/domain/entities/goal.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
@@ -26,6 +27,7 @@ export const dataSourceOptions: DataSourceOptions = {
     SessionTeam,
     SessionTeamPlayer,
     SessionAttendee,
+    SessionPlayerStat,
     Goal,
   ],
   migrations: [__dirname + '/../../migrations/*{.ts,.js}'],

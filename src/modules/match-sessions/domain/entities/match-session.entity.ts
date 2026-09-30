@@ -8,6 +8,7 @@ import {
 import { MatchSessionStatus } from '../enums/match-session-status.enum';
 import { SessionRotationMode } from '../enums/session-rotation-mode.enum';
 import { SessionAttendee } from './session-attendee.entity';
+import { SessionPlayerStat } from './session-player-stat.entity';
 import { SessionTeam } from './session-team.entity';
 
 @Entity('match_sessions')
@@ -47,6 +48,13 @@ export class MatchSession {
 
   @OneToMany(() => SessionAttendee, (attendee) => attendee.session)
   attendees: SessionAttendee[];
+
+  @OneToMany(() => SessionPlayerStat, (stat) => stat.session)
+  manualStats: SessionPlayerStat[];
+
+  // No es columna: lo calcula el repositorio (true si la jornada no tiene
+  // rondas) para que el front no tenga que deducir la regla.
+  allowsManualStats: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

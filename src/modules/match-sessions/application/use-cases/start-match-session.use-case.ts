@@ -8,6 +8,7 @@ import { MatchSessionStatus } from '../../domain/enums/match-session-status.enum
 import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.enum';
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
 import { StartMatchSessionDto } from '../dtos/start-match-session.dto';
+import { assertHasNoManualStats } from '../helpers/manual-stats-rules.helper';
 import { withQueue } from '../helpers/session-response.helper';
 import {
   assertValidSessionTeams,
@@ -40,6 +41,8 @@ export class StartMatchSessionUseCase {
       throw new ConflictError('La jornada ya empezó');
     }
 
+    assertHasNoManualStats(session);
+
     // Los jugadores no tienen por qué estar en attendees: el admin puede sumar
     // a alguien que vino sin confirmar.
     await assertValidSessionTeams(dto.teams, this.playerRepository);
@@ -65,6 +68,9 @@ export class StartMatchSessionUseCase {
 
     const currentMatch =
       await this.sessionRoundFactory.createFirstRound(startedSession);
+    if (currentMatch) {
+      startedSession.allowsManualStats = false;
+    }
 
     this.sessionEventsService.emit(sessionId);
 

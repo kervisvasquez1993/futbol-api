@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -20,18 +21,23 @@ import {
   SessionTeamInputDto,
 } from '../application/dtos/create-match-session.dto';
 import { CreateSessionRoundDto } from '../application/dtos/create-session-round.dto';
+import { SetSessionPlayerStatsDto } from '../application/dtos/set-session-player-stats.dto';
 import { StartMatchSessionDto } from '../application/dtos/start-match-session.dto';
 import { UpdateSessionTeamsDto } from '../application/dtos/update-session-teams.dto';
+import { assertHasLinkedPlayer } from '../application/helpers/assert-has-linked-player';
 import { AddSessionGuestUseCase } from '../application/use-cases/add-session-guest.use-case';
 import { AddSessionTeamUseCase } from '../application/use-cases/add-session-team.use-case';
 import { CancelAttendanceUseCase } from '../application/use-cases/cancel-attendance.use-case';
 import { ConfirmAttendanceUseCase } from '../application/use-cases/confirm-attendance.use-case';
 import { CreateMatchSessionUseCase } from '../application/use-cases/create-match-session.use-case';
 import { CreateSessionRoundUseCase } from '../application/use-cases/create-session-round.use-case';
+import { DeleteMatchSessionUseCase } from '../application/use-cases/delete-match-session.use-case';
 import { FinishMatchSessionUseCase } from '../application/use-cases/finish-match-session.use-case';
 import { GetMatchSessionUseCase } from '../application/use-cases/get-match-session.use-case';
 import { ListMatchSessionsUseCase } from '../application/use-cases/list-match-sessions.use-case';
 import { RemoveSessionAttendeeUseCase } from '../application/use-cases/remove-session-attendee.use-case';
+import { RemoveSessionPlayerStatsUseCase } from '../application/use-cases/remove-session-player-stats.use-case';
+import { SetSessionPlayerStatsUseCase } from '../application/use-cases/set-session-player-stats.use-case';
 import { StartMatchSessionUseCase } from '../application/use-cases/start-match-session.use-case';
 import { UpdateSessionTeamsUseCase } from '../application/use-cases/update-session-teams.use-case';
 import { SessionEventStreamService } from '../application/services/session-event-stream.service';
@@ -51,6 +57,9 @@ export class MatchSessionsController {
     private readonly cancelAttendanceUseCase: CancelAttendanceUseCase,
     private readonly addSessionGuestUseCase: AddSessionGuestUseCase,
     private readonly removeSessionAttendeeUseCase: RemoveSessionAttendeeUseCase,
+    private readonly setSessionPlayerStatsUseCase: SetSessionPlayerStatsUseCase,
+    private readonly removeSessionPlayerStatsUseCase: RemoveSessionPlayerStatsUseCase,
+    private readonly deleteMatchSessionUseCase: DeleteMatchSessionUseCase,
     private readonly sessionEventStreamService: SessionEventStreamService,
   ) {}
 
@@ -73,6 +82,13 @@ export class MatchSessionsController {
   @Post()
   create(@Body() dto: CreateMatchSessionDto) {
     return this.createMatchSessionUseCase.execute(dto);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id') id: string) {
+    return this.deleteMatchSessionUseCase.execute(id);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
@@ -133,5 +149,46 @@ export class MatchSessionsController {
   @Delete(':id/attendees/:playerId')
   removeAttendee(@Param('id') id: string, @Param('playerId') playerId: string) {
     return this.removeSessionAttendeeUseCase.execute(id, playerId);
+  }
+
+  // El playerId sale siempre del token: un member solo toca su propia fila.
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/my-stats')
+  setMyStats(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: SetSessionPlayerStatsDto,
+  ) {
+    const playerId = assertHasLinkedPlayer(user);
+    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/my-stats')
+  removeMyStats(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const playerId = assertHasLinkedPlayer(user);
+    return this.removeSessionPlayerStatsUseCase.execute(id, playerId);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Put(':id/players/:playerId/stats')
+  setPlayerStats(
+    @Param('id') id: string,
+    @Param('playerId') playerId: string,
+    @Body() dto: SetSessionPlayerStatsDto,
+  ) {
+    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete(':id/players/:playerId/stats')
+  removePlayerStats(
+    @Param('id') id: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.removeSessionPlayerStatsUseCase.execute(id, playerId);
   }
 }

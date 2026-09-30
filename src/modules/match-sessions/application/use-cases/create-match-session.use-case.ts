@@ -49,6 +49,9 @@ export class CreateMatchSessionUseCase {
     const currentMatch = isConvocatoria
       ? null
       : await this.sessionRoundFactory.createFirstRound(session);
+    if (currentMatch) {
+      session.allowsManualStats = false;
+    }
 
     return { session: withQueue(session), currentMatch };
   }

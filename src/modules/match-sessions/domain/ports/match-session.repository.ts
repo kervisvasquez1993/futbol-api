@@ -49,4 +49,18 @@ export abstract class MatchSessionRepository {
     sessionTeamId: string,
     queuePosition: number | null,
   ): Promise<void>;
+  abstract hasRounds(sessionId: string): Promise<boolean>;
+  // Upsert de la carga manual; también suma al jugador a los asistentes.
+  abstract upsertPlayerStats(
+    sessionId: string,
+    playerId: string,
+    stats: { goals: number; assists: number },
+  ): Promise<void>;
+  abstract removePlayerStats(
+    sessionId: string,
+    playerId: string,
+  ): Promise<void>;
+  // Borra la jornada (con todo lo que cuelga por CASCADE) y los invitados que
+  // quedaron sin historial, en una sola transacción.
+  abstract delete(sessionId: string): Promise<void>;
 }

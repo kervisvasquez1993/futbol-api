@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, In, Repository } from 'typeorm';
 import { MatchSession } from '../../domain/entities/match-session.entity';
 import { SessionAttendee } from '../../domain/entities/session-attendee.entity';
+import { SessionPlayerStat } from '../../domain/entities/session-player-stat.entity';
 import { SessionTeamPlayer } from '../../domain/entities/session-team-player.entity';
 import { SessionTeam } from '../../domain/entities/session-team.entity';
 import { MatchSessionStatus } from '../../domain/enums/match-session-status.enum';
@@ -20,13 +21,16 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     private readonly teamRepository: Repository<SessionTeam>,
     @InjectRepository(SessionAttendee)
     private readonly attendeeRepository: Repository<SessionAttendee>,
+    @InjectRepository(SessionPlayerStat)
+    private readonly statRepository: Repository<SessionPlayerStat>,
   ) {}
 
-  findAll(): Promise<MatchSession[]> {
-    return this.repository.find({
+  async findAll(): Promise<MatchSession[]> {
+    const sessions = await this.repository.find({
       relations: {
         teams: { players: { player: true } },
         attendees: { player: true },
+        manualStats: { player: true },
       },
       order: {
         createdAt: 'DESC',
@@ -34,17 +38,46 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
         attendees: { createdAt: 'ASC' },
       },
     });
+    return this.withManualStats(sessions);
   }
 
-  findById(id: string): Promise<MatchSession | null> {
-    return this.repository.findOne({
+  async findById(id: string): Promise<MatchSession | null> {
+    const session = await this.repository.findOne({
       where: { id },
       relations: {
         teams: { players: { player: true } },
         attendees: { player: true },
+        manualStats: { player: true },
       },
       order: { teams: { joinOrder: 'ASC' }, attendees: { createdAt: 'ASC' } },
     });
+    if (!session) return null;
+    const [withStats] = await this.withManualStats([session]);
+    return withStats;
+  }
+
+  // Ordena la carga manual y calcula allowsManualStats (jornada sin rondas).
+  private async withManualStats(
+    sessions: MatchSession[],
+  ): Promise<MatchSession[]> {
+    if (sessions.length === 0) return sessions;
+
+    const rows: { session_id: string }[] = await this.repository.query(
+      `SELECT DISTINCT session_id FROM matches WHERE session_id = ANY($1)`,
+      [sessions.map((session) => session.id)],
+    );
+    const withRounds = new Set(rows.map((row) => row.session_id));
+
+    for (const session of sessions) {
+      session.allowsManualStats = !withRounds.has(session.id);
+      session.manualStats.sort(
+        (a, b) =>
+          b.goals - a.goals ||
+          b.assists - a.assists ||
+          a.player.name.localeCompare(b.player.name),
+      );
+    }
+    return sessions;
   }
 
   async create(data: DeepPartial<MatchSession>): Promise<MatchSession> {
@@ -203,5 +236,88 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     queuePosition: number | null,
   ): Promise<void> {
     await this.teamRepository.update(sessionTeamId, { queuePosition });
+  }
+
+  async hasRounds(sessionId: string): Promise<boolean> {
+    const [row] = await this.repository.query(
+      `SELECT EXISTS (SELECT 1 FROM matches WHERE session_id = $1) AS "hasRounds"`,
+      [sessionId],
+    );
+    return row.hasRounds;
+  }
+
+  async upsertPlayerStats(
+    sessionId: string,
+    playerId: string,
+    { goals, assists }: { goals: number; assists: number },
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager
+        .createQueryBuilder()
+        .insert()
+        .into(SessionPlayerStat)
+        .values({ sessionId, playerId, goals, assists })
+        .orUpdate(
+          ['goals', 'assists', 'updated_at'],
+          ['session_id', 'player_id'],
+        )
+        .execute();
+
+      await manager
+        .createQueryBuilder()
+        .insert()
+        .into(SessionAttendee)
+        .values({ sessionId, playerId })
+        .orIgnore()
+        .execute();
+    });
+  }
+
+  async removePlayerStats(sessionId: string, playerId: string): Promise<void> {
+    await this.statRepository.delete({ sessionId, playerId });
+  }
+
+  async delete(sessionId: string): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      // Los invitados se juntan ANTES de borrar: después ya no quedan filas
+      // que los relacionen con la jornada.
+      const guests: { id: string }[] = await manager.query(
+        `SELECT DISTINCT p.id
+         FROM players p
+         WHERE p.is_guest = true
+           AND (
+             EXISTS (SELECT 1 FROM session_attendees sa
+                     WHERE sa.player_id = p.id AND sa.session_id = $1)
+             OR EXISTS (SELECT 1 FROM session_player_stats s
+                        WHERE s.player_id = p.id AND s.session_id = $1)
+             OR EXISTS (SELECT 1 FROM session_team_players stp
+                        JOIN session_teams st ON st.id = stp.session_team_id
+                        WHERE stp.player_id = p.id AND st.session_id = $1)
+             OR EXISTS (SELECT 1 FROM match_participants mp
+                        JOIN matches m ON m.id = mp.match_id
+                        WHERE mp.player_id = p.id AND m.session_id = $1)
+           )`,
+        [sessionId],
+      );
+
+      await manager.delete(MatchSession, { id: sessionId });
+
+      if (guests.length === 0) return;
+
+      // Misma regla que quitar asistente: solo se borra el invitado que ya
+      // no tiene nada. Los jugadores registrados nunca se borran.
+      await manager.query(
+        `DELETE FROM players p
+         WHERE p.is_guest = true
+           AND p.id = ANY($1)
+           AND NOT EXISTS (SELECT 1 FROM users u WHERE u.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM session_attendees sa WHERE sa.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM session_team_players stp WHERE stp.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM match_participants mp WHERE mp.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM goals g WHERE g.scorer_id = p.id OR g.assist_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM session_player_stats s WHERE s.player_id = p.id)`,
+        [guests.map((guest) => guest.id)],
+      );
+    });
   }
 }

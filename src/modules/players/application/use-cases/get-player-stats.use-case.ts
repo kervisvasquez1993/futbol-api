@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { PlayerRepository } from '../../domain/ports/player.repository';
 import { NotFoundError } from '../../../../shared/errors/domain-errors';
+import {
+  LeaderboardRow,
+  PLAYER_STATS_SQL,
+} from '../../../stats/application/use-cases/get-leaderboard.use-case';
 
 @Injectable()
 export class GetPlayerStatsUseCase {
@@ -10,34 +14,19 @@ export class GetPlayerStatsUseCase {
     private readonly dataSource: DataSource,
   ) {}
 
-  async execute(playerId: string) {
+  // Mismo cálculo que el leaderboard, para que perfil y ranking coincidan.
+  async execute(playerId: string): Promise<LeaderboardRow> {
     const player = await this.playerRepository.findById(playerId);
 
     if (!player) {
       throw new NotFoundError('Jugador no encontrado');
     }
 
-    const [goalsResult] = await this.dataSource.query(
-      `SELECT COUNT(*)::int AS count FROM goals WHERE scorer_id = $1`,
+    const [stats] = await this.dataSource.query(
+      `${PLAYER_STATS_SQL} WHERE p.id = $1`,
       [playerId],
     );
 
-    const [assistsResult] = await this.dataSource.query(
-      `SELECT COUNT(*)::int AS count FROM goals WHERE assist_id = $1`,
-      [playerId],
-    );
-
-    const [matchesResult] = await this.dataSource.query(
-      `SELECT COUNT(*)::int AS count FROM match_participants WHERE player_id = $1`,
-      [playerId],
-    );
-
-    return {
-      playerId: player.id,
-      name: player.name,
-      goals: goalsResult.count,
-      assists: assistsResult.count,
-      matchesPlayed: matchesResult.count,
-    };
+    return stats;
   }
 }
