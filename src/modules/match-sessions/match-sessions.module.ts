@@ -11,6 +11,7 @@ import { MatchSessionRepository } from './domain/ports/match-session.repository'
 import { TypeOrmMatchSessionRepository } from './infrastructure/repositories/typeorm-match-session.repository';
 import { AddSessionGuestUseCase } from './application/use-cases/add-session-guest.use-case';
 import { AddSessionTeamUseCase } from './application/use-cases/add-session-team.use-case';
+import { ApproveSessionPlayerStatsUseCase } from './application/use-cases/approve-session-player-stats.use-case';
 import { AdvanceMatchSessionUseCase } from './application/use-cases/advance-match-session.use-case';
 import { CancelAttendanceUseCase } from './application/use-cases/cancel-attendance.use-case';
 import { ConfirmAttendanceUseCase } from './application/use-cases/confirm-attendance.use-case';
@@ -60,6 +61,7 @@ import { MatchSessionsController } from './presentation/match-sessions.controlle
     SetSessionPlayerStatsUseCase,
     RemoveSessionPlayerStatsUseCase,
     DeleteMatchSessionUseCase,
+    ApproveSessionPlayerStatsUseCase,
     SessionRoundFactory,
     SessionEventsService,
     SessionEventStreamService,

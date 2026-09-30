@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { NotFoundError } from '../../../../shared/errors/domain-errors';
 import { PlayerRepository } from '../../../players/domain/ports/player.repository';
 import { MatchSession } from '../../domain/entities/match-session.entity';
+import { ManualStatStatus } from '../../domain/enums/manual-stat-status.enum';
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
 import { SetSessionPlayerStatsDto } from '../dtos/set-session-player-stats.dto';
 import { assertAllowsManualStats } from '../helpers/manual-stats-rules.helper';
@@ -10,7 +11,8 @@ import { SessionEventsService } from '../services/session-events.service';
 
 // "Participei": carga (o corrige) los goles y asistencias de un jugador en una
 // jornada sin rondas. Vale en cualquier estado: la jornada puede no haberse
-// empezado nunca en la app.
+// empezado nunca en la app. Lo que carga el jugador queda pendiente (también
+// si edita una carga ya aprobada); lo que carga un admin queda aprobado.
 @Injectable()
 export class SetSessionPlayerStatsUseCase {
   constructor(
@@ -23,6 +25,7 @@ export class SetSessionPlayerStatsUseCase {
     sessionId: string,
     playerId: string,
     dto: SetSessionPlayerStatsDto,
+    approved: boolean,
   ) {
     const session = await this.matchSessionRepository.findById(sessionId);
 
@@ -40,6 +43,7 @@ export class SetSessionPlayerStatsUseCase {
     await this.matchSessionRepository.upsertPlayerStats(sessionId, playerId, {
       goals: dto.goals,
       assists: dto.assists,
+      status: approved ? ManualStatStatus.APROBADA : ManualStatStatus.PENDIENTE,
     });
     this.sessionEventsService.emit(sessionId);
 

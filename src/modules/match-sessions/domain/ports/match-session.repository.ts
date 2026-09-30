@@ -1,4 +1,5 @@
 import { DeepPartial } from 'typeorm';
+import { ManualStatStatus } from '../enums/manual-stat-status.enum';
 import { MatchSession } from '../entities/match-session.entity';
 import { SessionTeam } from '../entities/session-team.entity';
 
@@ -54,8 +55,13 @@ export abstract class MatchSessionRepository {
   abstract upsertPlayerStats(
     sessionId: string,
     playerId: string,
-    stats: { goals: number; assists: number },
+    stats: { goals: number; assists: number; status: ManualStatStatus },
   ): Promise<void>;
+  // Devuelve false si el jugador no tenía carga en la jornada.
+  abstract approvePlayerStats(
+    sessionId: string,
+    playerId: string,
+  ): Promise<boolean>;
   abstract removePlayerStats(
     sessionId: string,
     playerId: string,

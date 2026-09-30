@@ -6,6 +6,7 @@ import { SessionAttendee } from '../../domain/entities/session-attendee.entity';
 import { SessionPlayerStat } from '../../domain/entities/session-player-stat.entity';
 import { SessionTeamPlayer } from '../../domain/entities/session-team-player.entity';
 import { SessionTeam } from '../../domain/entities/session-team.entity';
+import { ManualStatStatus } from '../../domain/enums/manual-stat-status.enum';
 import { MatchSessionStatus } from '../../domain/enums/match-session-status.enum';
 import {
   MatchSessionRepository,
@@ -249,16 +250,20 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
   async upsertPlayerStats(
     sessionId: string,
     playerId: string,
-    { goals, assists }: { goals: number; assists: number },
+    {
+      goals,
+      assists,
+      status,
+    }: { goals: number; assists: number; status: ManualStatStatus },
   ): Promise<void> {
     await this.repository.manager.transaction(async (manager) => {
       await manager
         .createQueryBuilder()
         .insert()
         .into(SessionPlayerStat)
-        .values({ sessionId, playerId, goals, assists })
+        .values({ sessionId, playerId, goals, assists, status })
         .orUpdate(
-          ['goals', 'assists', 'updated_at'],
+          ['goals', 'assists', 'status', 'updated_at'],
           ['session_id', 'player_id'],
         )
         .execute();
@@ -271,6 +276,17 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
         .orIgnore()
         .execute();
     });
+  }
+
+  async approvePlayerStats(
+    sessionId: string,
+    playerId: string,
+  ): Promise<boolean> {
+    const result = await this.statRepository.update(
+      { sessionId, playerId },
+      { status: ManualStatStatus.APROBADA },
+    );
+    return !!result.affected;
   }
 
   async removePlayerStats(sessionId: string, playerId: string): Promise<void> {

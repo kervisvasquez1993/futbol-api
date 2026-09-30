@@ -11,7 +11,8 @@ export interface LeaderboardRow {
 }
 
 // Suma las dos fuentes: goles de las rondas y cargas manuales por jornada
-// (session_player_stats). Una jornada nunca tiene las dos a la vez.
+// (session_player_stats, solo las aprobadas por un admin). Una jornada nunca
+// tiene las dos a la vez.
 // `matchesPlayed` son rondas jugadas: las jornadas manuales no suman ahí
 // porque no se sabe cuántos partidos fueron; para eso está `sessionsPlayed`.
 export const PLAYER_STATS_SQL = `
@@ -42,6 +43,7 @@ export const PLAYER_STATS_SQL = `
   LEFT JOIN (
     SELECT player_id, SUM(goals) AS goals, SUM(assists) AS assists
     FROM session_player_stats
+    WHERE status = 'aprobada'
     GROUP BY player_id
   ) s ON s.player_id = p.id
   LEFT JOIN (
@@ -53,7 +55,9 @@ export const PLAYER_STATS_SQL = `
       JOIN matches m ON m.id = mp.match_id
       WHERE m.session_id IS NOT NULL
       UNION
-      SELECT player_id, session_id FROM session_player_stats
+      SELECT player_id, session_id
+      FROM session_player_stats
+      WHERE status = 'aprobada'
     ) x
     GROUP BY player_id
   ) j ON j.player_id = p.id

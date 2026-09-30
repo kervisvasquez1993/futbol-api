@@ -27,6 +27,7 @@ import { UpdateSessionTeamsDto } from '../application/dtos/update-session-teams.
 import { assertHasLinkedPlayer } from '../application/helpers/assert-has-linked-player';
 import { AddSessionGuestUseCase } from '../application/use-cases/add-session-guest.use-case';
 import { AddSessionTeamUseCase } from '../application/use-cases/add-session-team.use-case';
+import { ApproveSessionPlayerStatsUseCase } from '../application/use-cases/approve-session-player-stats.use-case';
 import { CancelAttendanceUseCase } from '../application/use-cases/cancel-attendance.use-case';
 import { ConfirmAttendanceUseCase } from '../application/use-cases/confirm-attendance.use-case';
 import { CreateMatchSessionUseCase } from '../application/use-cases/create-match-session.use-case';
@@ -60,6 +61,7 @@ export class MatchSessionsController {
     private readonly setSessionPlayerStatsUseCase: SetSessionPlayerStatsUseCase,
     private readonly removeSessionPlayerStatsUseCase: RemoveSessionPlayerStatsUseCase,
     private readonly deleteMatchSessionUseCase: DeleteMatchSessionUseCase,
+    private readonly approveSessionPlayerStatsUseCase: ApproveSessionPlayerStatsUseCase,
     private readonly sessionEventStreamService: SessionEventStreamService,
   ) {}
 
@@ -160,7 +162,7 @@ export class MatchSessionsController {
     @Body() dto: SetSessionPlayerStatsDto,
   ) {
     const playerId = assertHasLinkedPlayer(user);
-    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto);
+    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto, false);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -180,7 +182,16 @@ export class MatchSessionsController {
     @Param('playerId') playerId: string,
     @Body() dto: SetSessionPlayerStatsDto,
   ) {
-    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto);
+    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto, true);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch(':id/players/:playerId/stats/approve')
+  approvePlayerStats(
+    @Param('id') id: string,
+    @Param('playerId') playerId: string,
+  ) {
+    return this.approveSessionPlayerStatsUseCase.execute(id, playerId);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
