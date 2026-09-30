@@ -116,7 +116,10 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
 
   async start(
     sessionId: string,
-    data: Pick<MatchSession, 'rotationMode' | 'durationMinutes' | 'goalLimit'>,
+    data: Pick<
+      MatchSession,
+      'rotationMode' | 'durationMinutes' | 'goalLimit' | 'playersPerTeam'
+    >,
     teams: DeepPartial<SessionTeam>[],
   ): Promise<MatchSession | null> {
     const started = await this.repository.manager.transaction(
@@ -153,9 +156,14 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
       empty,
       remove,
       attendeePlayerIds,
+      playersPerTeam,
     }: SessionTeamsReplacement,
   ): Promise<MatchSession> {
     await this.repository.manager.transaction(async (manager) => {
+      if (playersPerTeam !== undefined) {
+        await manager.update(MatchSession, sessionId, { playersPerTeam });
+      }
+
       const existingIds = [
         ...update.map((team) => team.id),
         ...empty.map((team) => team.id),

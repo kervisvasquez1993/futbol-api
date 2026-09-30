@@ -5,11 +5,16 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.enum';
-import { SessionTeamInputDto } from './create-match-session.dto';
+import { MAX_PLAYERS_PER_TEAM } from '../../domain/entities/match-session.entity';
+import {
+  PLAYERS_PER_TEAM_MESSAGE,
+  SessionTeamInputDto,
+} from './create-match-session.dto';
 
 export class StartMatchSessionDto {
   @IsOptional()
@@ -27,6 +32,12 @@ export class StartMatchSessionDto {
   @IsInt({ message: 'El límite de goles debe ser un número entero' })
   @Min(1, { message: 'El límite de goles debe ser al menos 1' })
   goalLimit?: number;
+
+  @IsOptional()
+  @IsInt({ message: PLAYERS_PER_TEAM_MESSAGE })
+  @Min(1, { message: PLAYERS_PER_TEAM_MESSAGE })
+  @Max(MAX_PLAYERS_PER_TEAM, { message: PLAYERS_PER_TEAM_MESSAGE })
+  playersPerTeam?: number;
 
   @IsArray({ message: 'Los equipos deben ser una lista' })
   @ArrayMinSize(2, { message: 'La jornada debe tener al menos 2 equipos' })

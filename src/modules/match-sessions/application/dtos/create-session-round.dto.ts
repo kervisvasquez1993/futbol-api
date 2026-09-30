@@ -7,6 +7,13 @@ export class CreateSessionRoundDto {
   @IsUUID('all', { message: 'El equipo visitante debe ser un id válido' })
   awaySessionTeamId: string;
 
+  // Equipo que presta jugadores para completar a los dos que juegan.
+  @IsOptional()
+  @IsUUID('all', {
+    message: 'El equipo de refuerzos debe ser otro equipo de la jornada',
+  })
+  fillFromSessionTeamId?: string;
+
   @IsOptional()
   @IsInt({ message: 'La duración debe ser un número entero de minutos' })
   @Min(1, { message: 'La duración debe ser al menos 1 minuto' })

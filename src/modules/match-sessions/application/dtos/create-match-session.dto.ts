@@ -8,11 +8,16 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { MAX_PLAYERS_PER_TEAM } from '../../domain/entities/match-session.entity';
 import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.enum';
+
+export const PLAYERS_PER_TEAM_MESSAGE =
+  'Los jugadores por equipo deben ser un número entre 1 y 20';
 
 export class SessionTeamInputDto {
   @IsString({ message: 'El nombre del equipo debe ser un texto' })
@@ -49,6 +54,12 @@ export class CreateMatchSessionDto {
   @IsInt({ message: 'El límite de goles debe ser un número entero' })
   @Min(1, { message: 'El límite de goles debe ser al menos 1' })
   goalLimit?: number;
+
+  @IsOptional()
+  @IsInt({ message: PLAYERS_PER_TEAM_MESSAGE })
+  @Min(1, { message: PLAYERS_PER_TEAM_MESSAGE })
+  @Max(MAX_PLAYERS_PER_TEAM, { message: PLAYERS_PER_TEAM_MESSAGE })
+  playersPerTeam?: number;
 
   // Sin equipos (o vacío) la jornada arranca en 'convocatoria'; el mínimo de
   // 2 equipos se valida en el caso de uso cuando vienen.

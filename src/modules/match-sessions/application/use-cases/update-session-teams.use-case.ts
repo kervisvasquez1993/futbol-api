@@ -137,6 +137,7 @@ export class UpdateSessionTeamsUseCase {
         .filter((team) => !playedTeamIds.has(team.id))
         .map((team) => team.id),
       attendeePlayerIds: this.newAttendees(session, teams),
+      playersPerTeam: dto.playersPerTeam,
     };
 
     const updatedSession = await this.matchSessionRepository.replaceTeams(

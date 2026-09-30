@@ -55,6 +55,7 @@ export class StartMatchSessionUseCase {
         rotationMode,
         durationMinutes: dto.durationMinutes ?? session.durationMinutes,
         goalLimit: dto.goalLimit ?? session.goalLimit,
+        playersPerTeam: dto.playersPerTeam ?? session.playersPerTeam,
       },
       buildSessionTeams(
         dto.teams,

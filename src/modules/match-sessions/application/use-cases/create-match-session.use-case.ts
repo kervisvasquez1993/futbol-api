@@ -40,6 +40,7 @@ export class CreateMatchSessionUseCase {
       rotationMode,
       durationMinutes: dto.durationMinutes ?? null,
       goalLimit: dto.goalLimit ?? null,
+      playersPerTeam: dto.playersPerTeam ?? null,
       teams: buildSessionTeams(
         teams,
         rotationMode === SessionRotationMode.WINNER_STAYS,

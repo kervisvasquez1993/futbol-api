@@ -6,10 +6,15 @@ import { Match } from '../../../matches/domain/entities/match.entity';
 import { MatchSession } from '../../domain/entities/match-session.entity';
 import { SessionTeam } from '../../domain/entities/session-team.entity';
 import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.enum';
+import { PickedFillIns, pickFillIns } from '../helpers/pick-fill-ins';
+import { RandomService } from './random.service';
 
 @Injectable()
 export class SessionRoundFactory {
-  constructor(private readonly matchRepository: MatchRepository) {}
+  constructor(
+    private readonly matchRepository: MatchRepository,
+    private readonly randomService: RandomService,
+  ) {}
 
   // En 'winner_stays' la ronda 1 la juegan los dos primeros equipos; en
   // 'manual' la arma el admin después.
@@ -30,13 +35,28 @@ export class SessionRoundFactory {
     );
   }
 
-  createRound(
+  // Con `donorTeam`, los equipos incompletos se completan para esta ronda con
+  // jugadores de ese equipo (isFillIn). Las plantillas no cambian.
+  async createRound(
     session: MatchSession,
     home: SessionTeam,
     away: SessionTeam,
     durationMinutes: number | null,
     goalLimit: number | null,
+    donorTeam: SessionTeam | null = null,
   ) {
+    const homeIds = home.players.map((player) => player.playerId);
+    const awayIds = away.players.map((player) => player.playerId);
+    const fillIns = donorTeam
+      ? await this.pickFillIns(session, homeIds, awayIds, donorTeam)
+      : { home: [], away: [] };
+
+    const participants = (
+      playerIds: string[],
+      team: MatchTeamSide,
+      isFillIn: boolean,
+    ) => playerIds.map((playerId) => ({ playerId, team, isFillIn }));
+
     return this.matchRepository.create({
       name: session.name,
       date: session.date,
@@ -49,15 +69,43 @@ export class SessionRoundFactory {
       durationMinutes,
       goalLimit,
       participants: [
-        ...home.players.map((player) => ({
-          playerId: player.playerId,
-          team: MatchTeamSide.HOME,
-        })),
-        ...away.players.map((player) => ({
-          playerId: player.playerId,
-          team: MatchTeamSide.AWAY,
-        })),
+        ...participants(homeIds, MatchTeamSide.HOME, false),
+        ...participants(fillIns.home, MatchTeamSide.HOME, true),
+        ...participants(awayIds, MatchTeamSide.AWAY, false),
+        ...participants(fillIns.away, MatchTeamSide.AWAY, true),
       ],
+    });
+  }
+
+  private async pickFillIns(
+    session: MatchSession,
+    home: string[],
+    away: string[],
+    donorTeam: SessionTeam,
+  ): Promise<PickedFillIns> {
+    // Sin tamaño configurado (jornadas viejas): el equipo con más jugadores.
+    const size =
+      session.playersPerTeam ??
+      Math.max(0, ...session.teams.map((team) => team.players.length));
+
+    const matches = await this.matchRepository.findAllBySessionId(session.id);
+    const fillInCounts = new Map<string, number>();
+    for (const participant of matches.flatMap((match) => match.participants)) {
+      if (participant.isFillIn) {
+        fillInCounts.set(
+          participant.playerId,
+          (fillInCounts.get(participant.playerId) ?? 0) + 1,
+        );
+      }
+    }
+
+    return pickFillIns({
+      size,
+      home,
+      away,
+      donors: donorTeam.players.map((player) => player.playerId),
+      fillInCounts,
+      randomInt: (max) => this.randomService.int(max),
     });
   }
 }

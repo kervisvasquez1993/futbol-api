@@ -28,6 +28,7 @@ import { StartMatchSessionUseCase } from './application/use-cases/start-match-se
 import { UpdateSessionTeamsUseCase } from './application/use-cases/update-session-teams.use-case';
 import { SessionEventStreamService } from './application/services/session-event-stream.service';
 import { SessionEventsService } from './application/services/session-events.service';
+import { RandomService } from './application/services/random.service';
 import { SessionRoundFactory } from './application/services/session-round.factory';
 import { MatchSessionsController } from './presentation/match-sessions.controller';
 
@@ -63,6 +64,7 @@ import { MatchSessionsController } from './presentation/match-sessions.controlle
     DeleteMatchSessionUseCase,
     ApproveSessionPlayerStatsUseCase,
     SessionRoundFactory,
+    RandomService,
     SessionEventsService,
     SessionEventStreamService,
     {

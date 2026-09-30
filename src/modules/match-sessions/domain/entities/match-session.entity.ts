@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -11,7 +12,12 @@ import { SessionAttendee } from './session-attendee.entity';
 import { SessionPlayerStat } from './session-player-stat.entity';
 import { SessionTeam } from './session-team.entity';
 
+export const MAX_PLAYERS_PER_TEAM = 20;
+
 @Entity('match_sessions')
+@Check(
+  `"players_per_team" IS NULL OR ("players_per_team" >= 1 AND "players_per_team" <= ${MAX_PLAYERS_PER_TEAM})`,
+)
 export class MatchSession {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -34,6 +40,11 @@ export class MatchSession {
 
   @Column({ name: 'goal_limit', type: 'int', nullable: true })
   goalLimit: number | null;
+
+  // Tamaño de equipo de la jornada: con cuánto se completa al equipo que entra
+  // (refuerzos). null en jornadas viejas = el equipo con más jugadores.
+  @Column({ name: 'players_per_team', type: 'smallint', nullable: true })
+  playersPerTeam: number | null;
 
   @Column({
     name: 'rotation_mode',

@@ -36,6 +36,11 @@ export class MatchParticipant {
   @Column({ type: 'enum', enum: MatchTeamSide })
   team: MatchTeamSide;
 
+  // Jugó esta ronda de refuerzo, prestado por el equipo que acababa de perder.
+  // Su plantilla (session_team_players) no cambia.
+  @Column({ name: 'is_fill_in', default: false })
+  isFillIn: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

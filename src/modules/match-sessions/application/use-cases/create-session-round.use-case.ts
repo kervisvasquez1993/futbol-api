@@ -59,6 +59,21 @@ export class CreateSessionRoundUseCase {
       );
     }
 
+    const donorTeam = dto.fillFromSessionTeamId
+      ? session.teams.find((team) => team.id === dto.fillFromSessionTeamId)
+      : null;
+
+    if (
+      dto.fillFromSessionTeamId &&
+      (!donorTeam ||
+        donorTeam.id === homeTeam.id ||
+        donorTeam.id === awayTeam.id)
+    ) {
+      throw new ValidationError(
+        'El equipo de refuerzos debe ser otro equipo de la jornada',
+      );
+    }
+
     const matches = await this.matchRepository.findAllBySessionId(sessionId);
     const hasActiveRound = matches.some(
       (match) => match.status === MatchStatus.EN_CURSO,
@@ -74,6 +89,7 @@ export class CreateSessionRoundUseCase {
       awayTeam,
       dto.durationMinutes ?? null,
       dto.goalLimit ?? null,
+      donorTeam ?? null,
     );
 
     if (session.rotationMode === SessionRotationMode.WINNER_STAYS) {

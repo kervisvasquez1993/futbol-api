@@ -102,12 +102,15 @@ export class AdvanceMatchSessionUseCase {
       );
     }
 
+    // Si entra otro equipo, el que perdió presta jugadores para completar.
+    // En la revancha (2 equipos) no hay de dónde sacar.
     return this.sessionRoundFactory.createRound(
       session,
       winnerTeam,
       nextTeam,
       session.durationMinutes,
       session.goalLimit,
+      nextTeam.id !== loserTeam.id ? loserTeam : null,
     );
   }
 }

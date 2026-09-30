@@ -4,10 +4,15 @@ import {
   IsInt,
   IsOptional,
   IsUUID,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
-import { SessionTeamInputDto } from './create-match-session.dto';
+import { MAX_PLAYERS_PER_TEAM } from '../../domain/entities/match-session.entity';
+import {
+  PLAYERS_PER_TEAM_MESSAGE,
+  SessionTeamInputDto,
+} from './create-match-session.dto';
 
 export class UpdateSessionTeamInputDto extends SessionTeamInputDto {
   // Sin id se crea un equipo nuevo.
@@ -29,4 +34,11 @@ export class UpdateSessionTeamsDto {
   @ValidateNested({ each: true })
   @Type(() => UpdateSessionTeamInputDto)
   teams: UpdateSessionTeamInputDto[];
+
+  // Sin el campo no cambia; null lo borra (vuelve a "el equipo con más jugadores").
+  @IsOptional()
+  @IsInt({ message: PLAYERS_PER_TEAM_MESSAGE })
+  @Min(1, { message: PLAYERS_PER_TEAM_MESSAGE })
+  @Max(MAX_PLAYERS_PER_TEAM, { message: PLAYERS_PER_TEAM_MESSAGE })
+  playersPerTeam?: number | null;
 }

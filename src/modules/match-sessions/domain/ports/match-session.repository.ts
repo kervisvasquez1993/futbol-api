@@ -22,6 +22,8 @@ export interface SessionTeamsReplacement {
   // Equipos que no vinieron y nunca jugaron.
   remove: string[];
   attendeePlayerIds: string[];
+  // undefined = no cambia.
+  playersPerTeam?: number | null;
 }
 
 export abstract class MatchSessionRepository {
@@ -39,7 +41,10 @@ export abstract class MatchSessionRepository {
   // null si ya no estaba en convocatoria (otro admin la empezó antes).
   abstract start(
     sessionId: string,
-    data: Pick<MatchSession, 'rotationMode' | 'durationMinutes' | 'goalLimit'>,
+    data: Pick<
+      MatchSession,
+      'rotationMode' | 'durationMinutes' | 'goalLimit' | 'playersPerTeam'
+    >,
     teams: DeepPartial<SessionTeam>[],
   ): Promise<MatchSession | null>;
   abstract replaceTeams(
