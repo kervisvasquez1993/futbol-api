@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Sse,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +21,7 @@ import {
 } from '../application/dtos/create-match-session.dto';
 import { CreateSessionRoundDto } from '../application/dtos/create-session-round.dto';
 import { StartMatchSessionDto } from '../application/dtos/start-match-session.dto';
+import { UpdateSessionTeamsDto } from '../application/dtos/update-session-teams.dto';
 import { AddSessionGuestUseCase } from '../application/use-cases/add-session-guest.use-case';
 import { AddSessionTeamUseCase } from '../application/use-cases/add-session-team.use-case';
 import { CancelAttendanceUseCase } from '../application/use-cases/cancel-attendance.use-case';
@@ -31,6 +33,7 @@ import { GetMatchSessionUseCase } from '../application/use-cases/get-match-sessi
 import { ListMatchSessionsUseCase } from '../application/use-cases/list-match-sessions.use-case';
 import { RemoveSessionAttendeeUseCase } from '../application/use-cases/remove-session-attendee.use-case';
 import { StartMatchSessionUseCase } from '../application/use-cases/start-match-session.use-case';
+import { UpdateSessionTeamsUseCase } from '../application/use-cases/update-session-teams.use-case';
 import { SessionEventStreamService } from '../application/services/session-event-stream.service';
 
 @Controller('match-sessions')
@@ -41,6 +44,7 @@ export class MatchSessionsController {
     private readonly getMatchSessionUseCase: GetMatchSessionUseCase,
     private readonly finishMatchSessionUseCase: FinishMatchSessionUseCase,
     private readonly addSessionTeamUseCase: AddSessionTeamUseCase,
+    private readonly updateSessionTeamsUseCase: UpdateSessionTeamsUseCase,
     private readonly createSessionRoundUseCase: CreateSessionRoundUseCase,
     private readonly startMatchSessionUseCase: StartMatchSessionUseCase,
     private readonly confirmAttendanceUseCase: ConfirmAttendanceUseCase,
@@ -75,6 +79,12 @@ export class MatchSessionsController {
   @Post(':id/teams')
   addTeam(@Param('id') id: string, @Body() dto: SessionTeamInputDto) {
     return this.addSessionTeamUseCase.execute(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Put(':id/teams')
+  replaceTeams(@Param('id') id: string, @Body() dto: UpdateSessionTeamsDto) {
+    return this.updateSessionTeamsUseCase.execute(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

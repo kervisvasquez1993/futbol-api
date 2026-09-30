@@ -20,6 +20,7 @@ import { GetMatchSessionUseCase } from './application/use-cases/get-match-sessio
 import { ListMatchSessionsUseCase } from './application/use-cases/list-match-sessions.use-case';
 import { RemoveSessionAttendeeUseCase } from './application/use-cases/remove-session-attendee.use-case';
 import { StartMatchSessionUseCase } from './application/use-cases/start-match-session.use-case';
+import { UpdateSessionTeamsUseCase } from './application/use-cases/update-session-teams.use-case';
 import { SessionEventStreamService } from './application/services/session-event-stream.service';
 import { SessionEventsService } from './application/services/session-events.service';
 import { SessionRoundFactory } from './application/services/session-round.factory';
@@ -46,6 +47,7 @@ import { MatchSessionsController } from './presentation/match-sessions.controlle
     AddSessionTeamUseCase,
     CreateSessionRoundUseCase,
     StartMatchSessionUseCase,
+    UpdateSessionTeamsUseCase,
     ConfirmAttendanceUseCase,
     CancelAttendanceUseCase,
     AddSessionGuestUseCase,

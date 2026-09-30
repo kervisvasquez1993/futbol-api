@@ -2,6 +2,27 @@ import { DeepPartial } from 'typeorm';
 import { MatchSession } from '../entities/match-session.entity';
 import { SessionTeam } from '../entities/session-team.entity';
 
+export interface SessionTeamsReplacement {
+  update: {
+    id: string;
+    name: string;
+    queuePosition: number | null;
+    playerIds: string[];
+  }[];
+  create: {
+    name: string;
+    joinOrder: number;
+    queuePosition: number | null;
+    playerIds: string[];
+  }[];
+  // Equipos que ya jugaron y no vinieron: quedan sin plantilla ni fila (los
+  // partidos los referencian). `name` permite liberar un nombre que se reusa.
+  empty: { id: string; name: string }[];
+  // Equipos que no vinieron y nunca jugaron.
+  remove: string[];
+  attendeePlayerIds: string[];
+}
+
 export abstract class MatchSessionRepository {
   abstract findAll(): Promise<MatchSession[]>;
   abstract findById(id: string): Promise<MatchSession | null>;
@@ -20,6 +41,10 @@ export abstract class MatchSessionRepository {
     data: Pick<MatchSession, 'rotationMode' | 'durationMinutes' | 'goalLimit'>,
     teams: DeepPartial<SessionTeam>[],
   ): Promise<MatchSession | null>;
+  abstract replaceTeams(
+    sessionId: string,
+    replacement: SessionTeamsReplacement,
+  ): Promise<MatchSession>;
   abstract updateTeamQueuePosition(
     sessionTeamId: string,
     queuePosition: number | null,

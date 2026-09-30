@@ -68,17 +68,32 @@ export class AdvanceMatchSessionUseCase {
           team.id !== loserTeam.id &&
           team.queuePosition != null,
       )
-      .sort((a, b) => (a.queuePosition as number) - (b.queuePosition as number));
+      .sort(
+        (a, b) => (a.queuePosition as number) - (b.queuePosition as number),
+      );
 
     // ...y sale de la fila el primero que estaba esperando. Con solo 2 equipos
     // la fila está vacía en este punto: el propio perdedor es "el primero de
     // la fila" (revancha) una vez que se lo agrega.
     const nextTeam = queueBeforeLoser[0] ?? loserTeam;
 
-    await this.matchSessionRepository.updateTeamQueuePosition(
-      loserTeam.id,
-      currentMax + 1,
-    );
+    // Un equipo que se vació con PUT /teams mientras jugaba no vuelve a la fila.
+    const loserHasPlayers = loserTeam.players.length > 0;
+
+    if (loserHasPlayers) {
+      await this.matchSessionRepository.updateTeamQueuePosition(
+        loserTeam.id,
+        currentMax + 1,
+      );
+    }
+
+    if (
+      winnerTeam.players.length === 0 ||
+      (nextTeam.id === loserTeam.id && !loserHasPlayers)
+    ) {
+      // Sin rival (o sin ganador) con jugadores: la próxima ronda la arma el admin.
+      return null;
+    }
 
     if (nextTeam.id !== loserTeam.id) {
       await this.matchSessionRepository.updateTeamQueuePosition(

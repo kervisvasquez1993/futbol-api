@@ -17,6 +17,7 @@ import { AdjustMatchScoreDto } from '../application/dtos/adjust-match-score.dto'
 import { CreateMatchDto } from '../application/dtos/create-match.dto';
 import { JoinMatchDto } from '../application/dtos/join-match.dto';
 import { SetMatchResultDto } from '../application/dtos/set-match-result.dto';
+import { UpdateMatchCriteriaDto } from '../application/dtos/update-match-criteria.dto';
 import { MatchEventStreamService } from '../application/services/match-event-stream.service';
 import { AddParticipantUseCase } from '../application/use-cases/add-participant.use-case';
 import { AdjustMatchScoreUseCase } from '../application/use-cases/adjust-match-score.use-case';
@@ -26,6 +27,7 @@ import { GetMatchUseCase } from '../application/use-cases/get-match.use-case';
 import { JoinMatchUseCase } from '../application/use-cases/join-match.use-case';
 import { ListMatchesUseCase } from '../application/use-cases/list-matches.use-case';
 import { SetMatchResultUseCase } from '../application/use-cases/set-match-result.use-case';
+import { UpdateMatchCriteriaUseCase } from '../application/use-cases/update-match-criteria.use-case';
 
 @Controller('matches')
 export class MatchesController {
@@ -38,6 +40,7 @@ export class MatchesController {
     private readonly joinMatchUseCase: JoinMatchUseCase,
     private readonly setMatchResultUseCase: SetMatchResultUseCase,
     private readonly adjustMatchScoreUseCase: AdjustMatchScoreUseCase,
+    private readonly updateMatchCriteriaUseCase: UpdateMatchCriteriaUseCase,
     private readonly matchEventStreamService: MatchEventStreamService,
   ) {}
 
@@ -98,5 +101,11 @@ export class MatchesController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.adjustMatchScoreUseCase.execute(id, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch(':id/criteria')
+  updateCriteria(@Param('id') id: string, @Body() dto: UpdateMatchCriteriaDto) {
+    return this.updateMatchCriteriaUseCase.execute(id, dto);
   }
 }

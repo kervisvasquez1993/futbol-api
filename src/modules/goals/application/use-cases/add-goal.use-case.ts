@@ -2,12 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { GoalRepository } from '../../domain/ports/goal.repository';
 import { MatchLifecycleService } from '../../../matches/application/services/match-lifecycle.service';
 import { Match } from '../../../matches/domain/entities/match.entity';
+import { MatchStatus } from '../../../matches/domain/enums/match-status.enum';
 import { MatchTeamSide } from '../../../matches/domain/enums/match-team-side.enum';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import { assertCanOperateMatch } from '../../../matches/application/helpers/assert-can-operate-match';
 import { CurrentUserPayload } from '../../../../shared/decorators/current-user.decorator';
+import { UserRole } from '../../../../shared/enums/user-role.enum';
 import {
   ConflictError,
+  ForbiddenError,
   ValidationError,
 } from '../../../../shared/errors/domain-errors';
 import { CreateGoalDto } from '../dtos/create-goal.dto';
@@ -61,10 +64,31 @@ export class AddGoalUseCase {
       }
     }
 
+    const isFinished = match.status === MatchStatus.FINALIZADO;
+
+    // Con el partido terminado un member solo corrige lo suyo.
+    if (
+      isFinished &&
+      currentUser.role !== UserRole.ADMIN &&
+      dto.scorerId !== currentUser.playerId &&
+      dto.assistId !== currentUser.playerId
+    ) {
+      throw new ForbiddenError('Solo puedes cargar tus goles o asistencias');
+    }
+
+    // En un partido terminado el gol solo se atribuye a uno que ya estaba en
+    // el marcador; por eso el default depende del estado.
+    const addToScore = dto.addToScore ?? !isFinished;
+
+    if (isFinished && addToScore) {
+      throw new ValidationError(
+        'En un partido terminado el gol no puede sumar al marcador',
+      );
+    }
+
     const scorerTeam = match.participants.find(
       (participant) => participant.playerId === dto.scorerId,
     )?.team as MatchTeamSide;
-    const addToScore = dto.addToScore ?? true;
 
     // Solo registrar el autor: tiene que quedar algún gol sin autor en el
     // marcador de ese lado, si no los goles registrados superarían al marcador.

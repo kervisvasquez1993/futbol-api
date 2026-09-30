@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { ValidationError } from '../../../../shared/errors/domain-errors';
+import {
+  NotFoundError,
+  ValidationError,
+} from '../../../../shared/errors/domain-errors';
 import { PlayerRepository } from '../../../players/domain/ports/player.repository';
 import { MatchSession } from '../../domain/entities/match-session.entity';
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
 import { AddSessionGuestDto } from '../dtos/add-session-guest.dto';
-import { findOpenConvocatoria } from '../helpers/find-open-convocatoria.helper';
 import { withQueue } from '../helpers/session-response.helper';
 import { SessionEventsService } from '../services/session-events.service';
 
@@ -25,10 +27,13 @@ export class AddSessionGuestUseCase {
       throw new ValidationError('El nombre del invitado es obligatorio');
     }
 
-    const session = await findOpenConvocatoria(
-      this.matchSessionRepository,
-      sessionId,
-    );
+    // Vale en cualquier estado: con la jornada en curso o terminada el admin
+    // lo ubica en un equipo después con PUT /match-sessions/:id/teams.
+    const session = await this.matchSessionRepository.findById(sessionId);
+
+    if (!session) {
+      throw new NotFoundError('Jornada no encontrada');
+    }
 
     const nameTaken = session.attendees.some(
       (attendee) =>
