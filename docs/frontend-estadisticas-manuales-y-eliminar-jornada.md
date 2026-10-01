@@ -13,20 +13,37 @@ Todo sigue envuelto en `{ success, data }` / `{ success: false, message, errors?
 
 ## 1. Estadísticas manuales
 
-### 1.1. Una jornada tiene rondas **o** carga manual, nunca las dos
+### 1.1. Un jugador tiene goles de rondas **o** carga manual, nunca las dos
 
 | Jornada | Carga manual (`my-stats`, `players/:playerId/stats`) | Crear rondas (`POST /:id/start`, `POST /:id/matches`) |
 |---|---|---|
-| Sin rondas, sin cargas | ✅ | ✅ |
-| Sin rondas, con cargas (pendientes o aprobadas) | ✅ | ❌ `409` |
-| Con rondas | ❌ `409` | ✅ |
+| Sin rondas, sin cargas | ✅ todos | ✅ |
+| Sin rondas, con cargas (pendientes o aprobadas) | ✅ todos | ❌ `409` |
+| `en_curso` con rondas | ❌ `409` nadie: el que llega entra a un equipo y carga en la ronda | ✅ |
+| `finalizada` con rondas | ✅ **solo quien no jugó ninguna ronda** ("Estive lá") — ver 1.1.1 | — (la jornada terminó) |
 
 Mensajes de los `409`:
 
-- Cargar con rondas: `"Esta jornada tiene rodadas registradas: los gols se cargan en cada rodada"`
+- Cargar en curso con rondas: `"Esta jornada tiene rodadas registradas: los gols se cargan en cada rodada"`
 - Crear rondas con cargas: `"Esta jornada tiene estadísticas cargadas a mano: bórralas antes de crear rodadas"`
 
-**No deduzcas la regla en el front**: usá `session.allowsManualStats` (sección 1.3).
+**No deduzcas la regla en el front**: usá `session.allowsManualStats` y
+`session.allowsLateManualStats` (sección 1.3).
+
+#### 1.1.1. Jornada finalizada con rondas: "Estive lá"
+
+Alguien que jugó pero no quedó registrado en ninguna ronda marca **"Estive lá"**
+(`POST /attendance`) y después carga sus números con `PUT /my-stats`, igual que en una jornada sin
+rondas (queda `pendiente`, el admin aprueba). Quien **sí** jugó alguna ronda sigue cargando sus
+goles en cada ronda:
+
+- `409` `"Ya jugaste rondas en esta jornada: carga tus goles en cada ronda"` (en `my-stats`).
+- `409` `"Este jugador jugó rondas en esta jornada: sus goles se cargan en cada ronda"` (en el
+  endpoint de admin).
+
+Y al revés: si alguien tiene carga manual en la jornada, no se lo puede sumar a una de sus rondas.
+`POST /matches/:id/participants` (admin) y `POST /matches/:id/join` responden `409`
+`"Este jugador tiene estadísticas cargadas a mano en la jornada: bórralas antes de sumarlo a una ronda"`.
 
 Ojo: una carga **pendiente** también bloquea las rondas. Si el admin quiere armar equipos en una
 jornada donde alguien ya marcó "Participei", primero tiene que borrar esas cargas.
@@ -74,8 +91,11 @@ interface MatchSessionDto {
   // ...lo de hoy
   manualStats: SessionPlayerStatsDto[]; // NUEVO — ya viene ordenado: goals DESC, assists DESC, nombre
   allowsManualStats: boolean;           // NUEVO — true si la jornada no tiene rondas
+  allowsLateManualStats: boolean;       // NUEVO — true si está finalizada y tiene rondas (ver 1.1.1)
 }
 ```
+
+A lo sumo uno de los dos es `true`. Si los dos son `false`, nadie carga a mano.
 
 Una fila en `manualStats` = "participó en esta jornada", aunque tenga 0 goles y 0 asistencias.
 
@@ -122,25 +142,33 @@ Sin body. Pasa la carga a `aprobada`.
 | `404` | jornada inexistente | `"Jornada no encontrada"` |
 | `404` | admin carga a un jugador inexistente | `"Jugador no encontrado"` |
 | `404` | aprobar a alguien sin carga | `"Este jugador no tiene estadísticas cargadas en la jornada"` |
-| `409` | la jornada tiene rondas | ver 1.1 |
+| `409` | jornada en curso con rondas, o finalizada con rondas y el jugador jugó alguna | ver 1.1 y 1.1.1 |
+| `409` | sumar a una ronda a alguien con carga manual en la jornada | ver 1.1.1 |
 
 ### 1.6. Qué pintar
 
 **Member**, en la pantalla de la jornada:
 
-- Si `session.allowsManualStats`:
+- Si `session.allowsManualStats`, o si `session.allowsLateManualStats` **y no jugó ninguna ronda**
+  (`!matches.some(m => m.participants.some(p => p.playerId === me.playerId))`):
   - Buscar su fila: `session.manualStats.find(s => s.playerId === me.playerId)`.
   - Sin fila → botón **"Participei"** que abre goles/asistencias (steppers 0–50) → `PUT /my-stats`.
   - Con fila → mostrar sus números con un badge **"Pendiente de aprobación"** o **"Aprobado"**,
     botón "Editar" (avisar que al editar vuelve a pendiente) y "No participé" → `DELETE /my-stats`.
   - Si `me.playerId` es `null`, no mostrar el botón (el backend responde `403`).
-- Si `!session.allowsManualStats`: no mostrar nada de esto; los goles salen de las rondas.
+  - En `allowsLateManualStats`, si todavía no está en `attendees`, mostrar primero **"Estive lá"**
+    (`POST /attendance`). Igual `PUT /my-stats` lo agrega solo a `attendees`.
+- Si no se cumple nada de lo anterior: no mostrar nada de esto; los goles salen de las rondas.
+
+Al cargar, aprobar, corregir o rechazar llegan notificaciones (admins / jugador): ver
+`frontend-notificaciones.md`.
 
 **Admin**, en la misma pantalla:
 
 - Lista de `manualStats` con el badge de estado; en las `pendiente`, botones **Aprobar**
   (`PATCH .../approve`) y **Rechazar** (`DELETE .../players/:playerId/stats`).
 - Botón para cargar/corregir a cualquier asistente o invitado → `PUT .../players/:playerId/stats`.
+  En `allowsLateManualStats`, solo para quienes no jugaron ninguna ronda.
 - Si `manualStats.length > 0`, deshabilitar "Empezar jornada" / "Nueva ronda" con el texto del `409`
   (o dejarlo habilitado y mostrar el `message` que vuelve).
 
@@ -262,6 +290,7 @@ interface MatchSessionDto {
   // ...lo de hoy
   manualStats: SessionPlayerStatsDto[];
   allowsManualStats: boolean;
+  allowsLateManualStats: boolean;
 }
 
 interface SetSessionPlayerStatsBody {

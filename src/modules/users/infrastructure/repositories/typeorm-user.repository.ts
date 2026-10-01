@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UserRole } from '../../../../shared/enums/user-role.enum';
 import { Player } from '../../../players/domain/entities/player.entity';
 import {
   ConflictError,
@@ -30,6 +31,14 @@ export class TypeOrmUserRepository implements UserRepository {
 
   findByEmail(email: string): Promise<User | null> {
     return this.repository.findOne({ where: { email } });
+  }
+
+  findByPlayerId(playerId: string): Promise<User | null> {
+    return this.repository.findOne({ where: { playerId } });
+  }
+
+  findAdmins(): Promise<User[]> {
+    return this.repository.find({ where: { role: UserRole.ADMIN } });
   }
 
   async create(data: Partial<User>): Promise<User> {

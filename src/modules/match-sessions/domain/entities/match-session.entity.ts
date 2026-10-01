@@ -67,6 +67,10 @@ export class MatchSession {
   // rondas) para que el front no tenga que deducir la regla.
   allowsManualStats: boolean;
 
+  // No es columna: true si está finalizada y tiene rondas. Ahí solo carga a
+  // mano quien no jugó ninguna ronda.
+  allowsLateManualStats: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

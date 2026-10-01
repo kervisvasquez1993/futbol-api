@@ -162,7 +162,10 @@ export class MatchSessionsController {
     @Body() dto: SetSessionPlayerStatsDto,
   ) {
     const playerId = assertHasLinkedPlayer(user);
-    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto, false);
+    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto, {
+      userId: user.id,
+      byAdmin: false,
+    });
   }
 
   @UseGuards(JwtAuthGuard)
@@ -172,7 +175,10 @@ export class MatchSessionsController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     const playerId = assertHasLinkedPlayer(user);
-    return this.removeSessionPlayerStatsUseCase.execute(id, playerId);
+    return this.removeSessionPlayerStatsUseCase.execute(id, playerId, {
+      userId: user.id,
+      byAdmin: false,
+    });
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
@@ -181,8 +187,12 @@ export class MatchSessionsController {
     @Param('id') id: string,
     @Param('playerId') playerId: string,
     @Body() dto: SetSessionPlayerStatsDto,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto, true);
+    return this.setSessionPlayerStatsUseCase.execute(id, playerId, dto, {
+      userId: user.id,
+      byAdmin: true,
+    });
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
@@ -190,8 +200,9 @@ export class MatchSessionsController {
   approvePlayerStats(
     @Param('id') id: string,
     @Param('playerId') playerId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.approveSessionPlayerStatsUseCase.execute(id, playerId);
+    return this.approveSessionPlayerStatsUseCase.execute(id, playerId, user.id);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
@@ -199,7 +210,11 @@ export class MatchSessionsController {
   removePlayerStats(
     @Param('id') id: string,
     @Param('playerId') playerId: string,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.removeSessionPlayerStatsUseCase.execute(id, playerId);
+    return this.removeSessionPlayerStatsUseCase.execute(id, playerId, {
+      userId: user.id,
+      byAdmin: true,
+    });
   }
 }

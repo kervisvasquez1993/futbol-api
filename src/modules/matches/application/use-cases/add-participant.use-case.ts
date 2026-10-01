@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { MatchSessionRepository } from '../../../match-sessions/domain/ports/match-session.repository';
 import { PlayerRepository } from '../../../players/domain/ports/player.repository';
 import {
   ConflictError,
@@ -6,6 +7,7 @@ import {
   ValidationError,
 } from '../../../../shared/errors/domain-errors';
 import { MatchRepository } from '../../domain/ports/match.repository';
+import { assertHasNoManualStatsInSession } from '../helpers/assert-has-no-manual-stats-in-session';
 import { AddParticipantDto } from '../dtos/add-participant.dto';
 
 @Injectable()
@@ -13,6 +15,8 @@ export class AddParticipantUseCase {
   constructor(
     private readonly matchRepository: MatchRepository,
     private readonly playerRepository: PlayerRepository,
+    @Inject(forwardRef(() => MatchSessionRepository))
+    private readonly matchSessionRepository: MatchSessionRepository,
   ) {}
 
   async execute(matchId: string, dto: AddParticipantDto) {
@@ -35,6 +39,12 @@ export class AddParticipantUseCase {
     if (alreadyParticipant) {
       throw new ConflictError('El jugador ya forma parte de este partido');
     }
+
+    await assertHasNoManualStatsInSession(
+      match,
+      dto.playerId,
+      this.matchSessionRepository,
+    );
 
     return this.matchRepository.addParticipant(matchId, dto.playerId, dto.team);
   }

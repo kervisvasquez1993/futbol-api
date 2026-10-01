@@ -10,6 +10,7 @@ import { SessionTeamPlayer } from '../../modules/match-sessions/domain/entities/
 import { SessionAttendee } from '../../modules/match-sessions/domain/entities/session-attendee.entity';
 import { SessionPlayerStat } from '../../modules/match-sessions/domain/entities/session-player-stat.entity';
 import { Goal } from '../../modules/goals/domain/entities/goal.entity';
+import { Notification } from '../../modules/notifications/domain/entities/notification.entity';
 
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
@@ -29,6 +30,7 @@ export const dataSourceOptions: DataSourceOptions = {
     SessionAttendee,
     SessionPlayerStat,
     Goal,
+    Notification,
   ],
   migrations: [__dirname + '/../../migrations/*{.ts,.js}'],
   synchronize: false,

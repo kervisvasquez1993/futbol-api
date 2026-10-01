@@ -5,6 +5,8 @@ export abstract class UserRepository {
   abstract findAll(): Promise<User[]>;
   abstract findById(id: string): Promise<User | null>;
   abstract findByEmail(email: string): Promise<User | null>;
+  abstract findByPlayerId(playerId: string): Promise<User | null>;
+  abstract findAdmins(): Promise<User[]>;
   abstract create(data: Partial<User>): Promise<User>;
   // Crea el usuario vinculado a un Player invitado existente y lo convierte en
   // jugador registrado con `playerName`, todo en una transacción.

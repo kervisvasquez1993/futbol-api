@@ -28,7 +28,7 @@ en cualquier estado** y sigue siendo idempotente (llamarlo dos veces no falla ni
 |---|---|---|
 | `convocatoria` | confirmar (como hoy) | queda en `attendees` |
 | `en_curso` | **"Cheguei"** | queda en `attendees` **sin equipo**; el admin lo ubica con `PUT /teams` y juega desde la próxima ronda |
-| `finalizada` | **"Estive lá"** | queda registrado que fue. Si la jornada no tiene rondas (`allowsManualStats`), después puede cargar sus números con `PUT /my-stats` |
+| `finalizada` | **"Estive lá"** | queda registrado que fue. Después puede cargar sus números con `PUT /my-stats` si la jornada no tiene rondas (`allowsManualStats`) o, si tiene, cuando no jugó ninguna (`allowsLateManualStats`, ver `frontend-estadisticas-manuales-y-eliminar-jornada.md` 1.1.1) |
 
 Responde el `MatchSessionDto` actualizado y emite `session.updated`.
 

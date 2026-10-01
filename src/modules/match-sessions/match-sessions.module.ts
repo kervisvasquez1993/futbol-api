@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MatchesModule } from '../matches/matches.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PlayersModule } from '../players/players.module';
 import { MatchSession } from './domain/entities/match-session.entity';
 import { SessionAttendee } from './domain/entities/session-attendee.entity';
@@ -42,6 +43,7 @@ import { MatchSessionsController } from './presentation/match-sessions.controlle
       SessionPlayerStat,
     ]),
     PlayersModule,
+    NotificationsModule,
     forwardRef(() => MatchesModule),
   ],
   controllers: [MatchSessionsController],
