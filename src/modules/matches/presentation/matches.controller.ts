@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -22,6 +24,7 @@ import { MatchEventStreamService } from '../application/services/match-event-str
 import { AddParticipantUseCase } from '../application/use-cases/add-participant.use-case';
 import { AdjustMatchScoreUseCase } from '../application/use-cases/adjust-match-score.use-case';
 import { CreateMatchUseCase } from '../application/use-cases/create-match.use-case';
+import { DeleteMatchUseCase } from '../application/use-cases/delete-match.use-case';
 import { FinishMatchUseCase } from '../application/use-cases/finish-match.use-case';
 import { GetMatchUseCase } from '../application/use-cases/get-match.use-case';
 import { JoinMatchUseCase } from '../application/use-cases/join-match.use-case';
@@ -41,6 +44,7 @@ export class MatchesController {
     private readonly setMatchResultUseCase: SetMatchResultUseCase,
     private readonly adjustMatchScoreUseCase: AdjustMatchScoreUseCase,
     private readonly updateMatchCriteriaUseCase: UpdateMatchCriteriaUseCase,
+    private readonly deleteMatchUseCase: DeleteMatchUseCase,
     private readonly matchEventStreamService: MatchEventStreamService,
   ) {}
 
@@ -107,5 +111,12 @@ export class MatchesController {
   @Patch(':id/criteria')
   updateCriteria(@Param('id') id: string, @Body() dto: UpdateMatchCriteriaDto) {
     return this.updateMatchCriteriaUseCase.execute(id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Delete(':id')
+  @HttpCode(204)
+  remove(@Param('id') id: string) {
+    return this.deleteMatchUseCase.execute(id);
   }
 }

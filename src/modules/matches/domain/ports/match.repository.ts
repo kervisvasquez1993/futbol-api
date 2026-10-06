@@ -25,4 +25,7 @@ export abstract class MatchRepository {
     team: MatchTeamSide,
     delta: number,
   ): Promise<Match>;
+  // Borra el partido con sus goles y participantes (CASCADE) y los invitados
+  // que quedaron sin historial, en una sola transacción.
+  abstract delete(matchId: string): Promise<void>;
 }

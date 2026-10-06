@@ -14,6 +14,7 @@ import { MatchLifecycleService } from './application/services/match-lifecycle.se
 import { AddParticipantUseCase } from './application/use-cases/add-participant.use-case';
 import { AdjustMatchScoreUseCase } from './application/use-cases/adjust-match-score.use-case';
 import { CreateMatchUseCase } from './application/use-cases/create-match.use-case';
+import { DeleteMatchUseCase } from './application/use-cases/delete-match.use-case';
 import { FinishMatchUseCase } from './application/use-cases/finish-match.use-case';
 import { GetMatchUseCase } from './application/use-cases/get-match.use-case';
 import { JoinMatchUseCase } from './application/use-cases/join-match.use-case';
@@ -40,6 +41,7 @@ import { MatchesController } from './presentation/matches.controller';
     SetMatchResultUseCase,
     AdjustMatchScoreUseCase,
     UpdateMatchCriteriaUseCase,
+    DeleteMatchUseCase,
     MatchLifecycleService,
     MatchEventsService,
     MatchEventStreamService,

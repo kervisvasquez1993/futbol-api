@@ -87,4 +87,43 @@ export class TypeOrmMatchRepository implements MatchRepository {
     );
     return this.findById(matchId) as Promise<Match>;
   }
+
+  async delete(matchId: string): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      // Los invitados se juntan ANTES de borrar: después ya no quedan filas
+      // que los relacionen con el partido.
+      const guests: { id: string }[] = await manager.query(
+        `SELECT DISTINCT p.id
+         FROM players p
+         WHERE p.is_guest = true
+           AND (
+             EXISTS (SELECT 1 FROM match_participants mp
+                     WHERE mp.player_id = p.id AND mp.match_id = $1)
+             OR EXISTS (SELECT 1 FROM goals g
+                        WHERE g.match_id = $1
+                          AND (g.scorer_id = p.id OR g.assist_id = p.id))
+           )`,
+        [matchId],
+      );
+
+      await manager.delete(Match, { id: matchId });
+
+      if (guests.length === 0) return;
+
+      // Misma regla que al borrar la jornada: solo se borra el invitado que
+      // ya no tiene nada. Los jugadores registrados nunca se borran.
+      await manager.query(
+        `DELETE FROM players p
+         WHERE p.is_guest = true
+           AND p.id = ANY($1)
+           AND NOT EXISTS (SELECT 1 FROM users u WHERE u.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM session_attendees sa WHERE sa.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM session_team_players stp WHERE stp.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM match_participants mp WHERE mp.player_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM goals g WHERE g.scorer_id = p.id OR g.assist_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM session_player_stats s WHERE s.player_id = p.id)`,
+        [guests.map((guest) => guest.id)],
+      );
+    });
+  }
 }
