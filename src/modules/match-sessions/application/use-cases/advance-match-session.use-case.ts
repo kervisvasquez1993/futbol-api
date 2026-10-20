@@ -126,7 +126,7 @@ export class AdvanceMatchSessionUseCase {
       session.durationMinutes,
       session.goalLimit,
       nextTeam.id !== loserTeam.id ? loserTeam : null,
-      true,
+      false,
     );
   }
 
@@ -203,7 +203,7 @@ export class AdvanceMatchSessionUseCase {
       session.durationMinutes,
       session.goalLimit,
       null,
-      true,
+      false,
     );
   }
 }

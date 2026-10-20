@@ -99,7 +99,7 @@ describe('AdvanceMatchSessionUseCase — bench_rotation', () => {
       'b1',
       'b2',
     ]);
-    expect([duration, donor, startClock]).toEqual([8, null, true]);
+    expect([duration, donor, startClock]).toEqual([8, null, false]);
   });
 
   it('gana el visitante: el equipo B sigue y el A pasa a ser el que entra', async () => {

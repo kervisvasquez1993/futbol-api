@@ -33,14 +33,14 @@ export class SessionRoundFactory {
       session.durationMinutes,
       session.goalLimit,
       null,
-      true,
+      false,
     );
   }
 
   // Con `donorTeam`, los equipos incompletos se completan para esta ronda con
   // jugadores de ese equipo (isFillIn). Las plantillas no cambian.
-  // `startClock`: las rondas automáticas (winner_stays) arrancan el reloj
-  // solas; las armadas a mano esperan al `PATCH /matches/:id/clock`.
+  // `startClock`: ninguna ronda arranca el reloj sola, tampoco las automáticas
+  // (winner_stays / bench_rotation): esperan el play (`PATCH /matches/:id/clock`).
   async createRound(
     session: MatchSession,
     home: SessionTeam,
