@@ -35,10 +35,11 @@ export class FinishMatchSessionUseCase {
     // para que MatchLifecycleService no genere una ronda adicional.
     session.status = MatchSessionStatus.FINALIZADA;
     const savedSession = await this.matchSessionRepository.save(session);
-    // Se calculó con el estado anterior: con rondas, ahora admite "Estive lá".
-    savedSession.allowsLateManualStats = !savedSession.allowsManualStats;
 
+    // Los flags se calcularon con el estado anterior: se recalculan ya finalizada.
     const matches = await this.matchRepository.findAllBySessionId(id);
+    savedSession.allowsManualStats = matches.length === 0;
+    savedSession.allowsLateManualStats = matches.length > 0;
     const lastMatch = matches[matches.length - 1];
 
     if (lastMatch && lastMatch.status === MatchStatus.EN_CURSO) {

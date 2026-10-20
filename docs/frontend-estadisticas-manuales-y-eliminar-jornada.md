@@ -2,12 +2,36 @@
 
 Delta sobre `frontend-jornadas-v2-rotacion-tiempo-real.md`. Dos cosas nuevas:
 
-1. **"Participei"**: en una jornada **sin rondas**, un jugador registrado carga cuántos goles y
+1. **"Participei"**: en una jornada **finalizada**, un jugador registrado carga cuántos goles y
    asistencias hizo, aunque no esté en ningún equipo. Esa carga queda **pendiente** hasta que un
    admin la aprueba; recién ahí suma al ranking.
 2. **Eliminar jornada** (solo admin), con todo lo que cuelga de ella.
 
 Todo sigue envuelto en `{ success, data }` / `{ success: false, message, errors? }`, salvo el SSE.
+
+> ### ⚠️ Cambio (2026-10-20): la carga manual solo con la jornada `finalizada`
+>
+> **Bug que corrige:** un jugador marcaba "Participei" en una jornada `en_curso` todavía sin rondas,
+> y después el admin no podía crear la primera ronda (`409 "...bórralas antes de crear rodadas"`).
+> La jornada quedaba trabada.
+>
+> **Ahora:**
+>
+> - `PUT /my-stats` y `PUT /players/:playerId/stats` responden `409`
+>   `"Las estadísticas se cargan cuando la jornada termina"` si la jornada está en `convocatoria` o
+>   `en_curso` (tenga rondas o no).
+> - Los `DELETE` (`my-stats` y `players/:playerId/stats`) siguen permitidos en **cualquier estado**:
+>   así el admin limpia las jornadas que quedaron trabadas y el jugador puede retirar su carga.
+> - `allowsManualStats` ahora es `true` solo si la jornada está **finalizada y sin rondas** (antes:
+>   "sin rondas", en cualquier estado). `allowsLateManualStats` no cambia (finalizada con rondas).
+>   Los dos vienen bien recalculados en la respuesta de `PATCH /:id/finish`.
+> - `PATCH /:id/finish` ya funcionaba desde `convocatoria`: mostrar **"Encerrar jornada"** también
+>   ahí, para la jornada que nunca se armó en la app (el admin la cierra y después cada uno carga).
+>
+> **Qué cambiar en el front:** sección 1.6. Resumen: "Participei" y "Adicionar estatísticas" solo
+> con la jornada finalizada; antes, el texto *"Você poderá registrar seus gols e assistências quando
+> a jornada terminar."*; y si una jornada no finalizada tiene `manualStats` (datos viejos), mostrarle
+> el panel al admin para que las borre.
 
 ---
 
@@ -15,17 +39,21 @@ Todo sigue envuelto en `{ success, data }` / `{ success: false, message, errors?
 
 ### 1.1. Un jugador tiene goles de rondas **o** carga manual, nunca las dos
 
-| Jornada | Carga manual (`my-stats`, `players/:playerId/stats`) | Crear rondas (`POST /:id/start`, `POST /:id/matches`) |
-|---|---|---|
-| Sin rondas, sin cargas | ✅ todos | ✅ |
-| Sin rondas, con cargas (pendientes o aprobadas) | ✅ todos | ❌ `409` |
-| `en_curso` con rondas | ❌ `409` nadie: el que llega entra a un equipo y carga en la ronda | ✅ |
-| `finalizada` con rondas | ✅ **solo quien no jugó ninguna ronda** ("Estive lá") — ver 1.1.1 | — (la jornada terminó) |
+| Jornada | Carga manual (`PUT my-stats`, `PUT players/:playerId/stats`) | Borrar carga (`DELETE`) | Crear rondas (`POST /:id/start`, `POST /:id/matches`) |
+|---|---|---|---|
+| `convocatoria` | ❌ `409` | ✅ | ✅ (❌ `409` si tiene cargas viejas) |
+| `en_curso` sin rondas | ❌ `409` | ✅ | ✅ (❌ `409` si tiene cargas viejas) |
+| `en_curso` con rondas | ❌ `409`: el que llega entra a un equipo y carga en la ronda | ✅ | ✅ |
+| `finalizada` sin rondas | ✅ todos | ✅ | — (la jornada terminó) |
+| `finalizada` con rondas | ✅ **solo quien no jugó ninguna ronda** ("Estive lá") — ver 1.1.1 | ✅ | — (la jornada terminó) |
+
+"Cargas viejas" = cargas hechas antes de este cambio, cuando se permitía cargar sin finalizar. Ya
+no se pueden crear nuevas en esos estados; las que existan se borran con el `DELETE`.
 
 Mensajes de los `409`:
 
-- Cargar en curso con rondas: `"Esta jornada tiene rodadas registradas: los gols se cargan en cada rodada"`
-- Crear rondas con cargas: `"Esta jornada tiene estadísticas cargadas a mano: bórralas antes de crear rodadas"`
+- Cargar sin la jornada finalizada: `"Las estadísticas se cargan cuando la jornada termina"`
+- Crear rondas con cargas viejas: `"Esta jornada tiene estadísticas cargadas a mano: bórralas antes de crear rodadas"`
 
 **No deduzcas la regla en el front**: usá `session.allowsManualStats` y
 `session.allowsLateManualStats` (sección 1.3).
@@ -45,11 +73,9 @@ Y al revés: si alguien tiene carga manual en la jornada, no se lo puede sumar a
 `POST /matches/:id/participants` (admin) y `POST /matches/:id/join` responden `409`
 `"Este jugador tiene estadísticas cargadas a mano en la jornada: bórralas antes de sumarlo a una ronda"`.
 
-Ojo: una carga **pendiente** también bloquea las rondas. Si el admin quiere armar equipos en una
-jornada donde alguien ya marcó "Participei", primero tiene que borrar esas cargas.
-
-La carga manual vale en **cualquier estado** de la jornada (`convocatoria`, `en_curso`,
-`finalizada`): la jornada puede no haberse "empezado" nunca en la app.
+La carga manual vale **solo con la jornada `finalizada`**. Si la jornada nunca se armó en la app
+(sigue en `convocatoria`), el admin la cierra con **"Encerrar jornada"** (`PATCH /:id/finish`, vale
+desde `convocatoria` y `en_curso`) y después cada uno carga sus goles.
 
 ### 1.2. Flujo de aprobación
 
@@ -90,12 +116,13 @@ interface SessionPlayerStatsDto {
 interface MatchSessionDto {
   // ...lo de hoy
   manualStats: SessionPlayerStatsDto[]; // NUEVO — ya viene ordenado: goals DESC, assists DESC, nombre
-  allowsManualStats: boolean;           // NUEVO — true si la jornada no tiene rondas
+  allowsManualStats: boolean;           // NUEVO — true si la jornada está finalizada y no tiene rondas
   allowsLateManualStats: boolean;       // NUEVO — true si está finalizada y tiene rondas (ver 1.1.1)
 }
 ```
 
-A lo sumo uno de los dos es `true`. Si los dos son `false`, nadie carga a mano.
+A lo sumo uno de los dos es `true`. Si los dos son `false`, nadie carga a mano (siempre es así en
+`convocatoria` y `en_curso`).
 
 Una fila en `manualStats` = "participó en esta jornada", aunque tenga 0 goles y 0 asistencias.
 
@@ -142,7 +169,8 @@ Sin body. Pasa la carga a `aprobada`.
 | `404` | jornada inexistente | `"Jornada no encontrada"` |
 | `404` | admin carga a un jugador inexistente | `"Jugador no encontrado"` |
 | `404` | aprobar a alguien sin carga | `"Este jugador no tiene estadísticas cargadas en la jornada"` |
-| `409` | jornada en curso con rondas, o finalizada con rondas y el jugador jugó alguna | ver 1.1 y 1.1.1 |
+| `409` | `PUT` con la jornada en `convocatoria` o `en_curso` | `"Las estadísticas se cargan cuando la jornada termina"` |
+| `409` | finalizada con rondas y el jugador jugó alguna | ver 1.1.1 |
 | `409` | sumar a una ronda a alguien con carga manual en la jornada | ver 1.1.1 |
 
 ### 1.6. Qué pintar
@@ -158,7 +186,11 @@ Sin body. Pasa la carga a `aprobada`.
   - Si `me.playerId` es `null`, no mostrar el botón (el backend responde `403`).
   - En `allowsLateManualStats`, si todavía no está en `attendees`, mostrar primero **"Estive lá"**
     (`POST /attendance`). Igual `PUT /my-stats` lo agrega solo a `attendees`.
-- Si no se cumple nada de lo anterior: no mostrar nada de esto; los goles salen de las rondas.
+- Si la jornada está en `convocatoria` o `en_curso`: en lugar del botón, el texto
+  *"Você poderá registrar seus gols e assistências quando a jornada terminar."*
+  (Si tiene una carga vieja suya, puede seguir mostrándola con "No participé" → `DELETE /my-stats`.)
+- Si está finalizada y no se cumple lo anterior (jugó rondas): no mostrar nada de esto; los goles
+  salen de las rondas.
 
 Al cargar, aprobar, corregir o rechazar llegan notificaciones (admins / jugador): ver
 `frontend-notificaciones.md`.
@@ -167,10 +199,15 @@ Al cargar, aprobar, corregir o rechazar llegan notificaciones (admins / jugador)
 
 - Lista de `manualStats` con el badge de estado; en las `pendiente`, botones **Aprobar**
   (`PATCH .../approve`) y **Rechazar** (`DELETE .../players/:playerId/stats`).
-- Botón para cargar/corregir a cualquier asistente o invitado → `PUT .../players/:playerId/stats`.
-  En `allowsLateManualStats`, solo para quienes no jugaron ninguna ronda.
-- Si `manualStats.length > 0`, deshabilitar "Empezar jornada" / "Nueva ronda" con el texto del `409`
-  (o dejarlo habilitado y mostrar el `message` que vuelve).
+- Botón **"Adicionar estatísticas"** para cargar/corregir a cualquier asistente o invitado →
+  `PUT .../players/:playerId/stats`. Solo con la jornada finalizada (`allowsManualStats` o
+  `allowsLateManualStats`); en `allowsLateManualStats`, solo para quienes no jugaron ninguna ronda.
+- **Jornadas trabadas (datos viejos):** si la jornada **no** está finalizada y
+  `manualStats.length > 0`, mostrar igual el panel "Estatísticas da jornada" con **solo** el botón
+  borrar (`DELETE .../players/:playerId/stats`), y deshabilitar "Empezar jornada" / "Nueva ronda"
+  con el texto del `409` (o dejarlo habilitado y mostrar el `message` que vuelve). Al borrar todas,
+  la jornada se destraba.
+- Botón **"Encerrar jornada"** (`PATCH /:id/finish`) en `convocatoria` y `en_curso`.
 
 **Ranking y perfil**: una carga recién hecha **no** cambia el leaderboard hasta que se aprueba.
 No hace falta invalidar el leaderboard al cargar; sí al **aprobar**, al **borrar** una aprobada y
@@ -263,7 +300,7 @@ es.addEventListener('session.deleted', () => {
 
 | Acción | admin | member |
 |---|---|---|
-| Marcar "Participei" y cargar sus goles/asistencias (jornada sin rondas) | ✅ (queda aprobada si usa el endpoint de admin) | ✅ solo los suyos, quedan pendientes |
+| Marcar "Participei" y cargar sus goles/asistencias (jornada finalizada) | ✅ (queda aprobada si usa el endpoint de admin) | ✅ solo los suyos, quedan pendientes |
 | Borrar su carga ("No participé") | ✅ | ✅ solo la suya |
 | Aprobar una carga | ✅ | ❌ |
 | Cargar / corregir / borrar la carga de otro jugador o invitado | ✅ | ❌ |
@@ -289,8 +326,8 @@ interface SessionPlayerStatsDto {
 interface MatchSessionDto {
   // ...lo de hoy
   manualStats: SessionPlayerStatsDto[];
-  allowsManualStats: boolean;
-  allowsLateManualStats: boolean;
+  allowsManualStats: boolean;     // finalizada y sin rondas
+  allowsLateManualStats: boolean; // finalizada y con rondas
 }
 
 interface SetSessionPlayerStatsBody {
@@ -308,7 +345,7 @@ interface LeaderboardEntryDto {
 }
 type PlayerStatsDto = LeaderboardEntryDto;
 
-// PUT    /match-sessions/:id/my-stats                         body SetSessionPlayerStatsBody -> ApiEnvelope<MatchSessionDto>
+// PUT    /match-sessions/:id/my-stats                         body SetSessionPlayerStatsBody -> ApiEnvelope<MatchSessionDto>   (409 si no está finalizada)
 // DELETE /match-sessions/:id/my-stats                                                        -> ApiEnvelope<MatchSessionDto>
 // PUT    /match-sessions/:id/players/:playerId/stats (admin)  body SetSessionPlayerStatsBody -> ApiEnvelope<MatchSessionDto>
 // DELETE /match-sessions/:id/players/:playerId/stats (admin)                                 -> ApiEnvelope<MatchSessionDto>

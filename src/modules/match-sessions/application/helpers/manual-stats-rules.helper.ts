@@ -1,16 +1,24 @@
 import { ConflictError } from '../../../../shared/errors/domain-errors';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import { MatchSession } from '../../domain/entities/match-session.entity';
+import { MatchSessionStatus } from '../../domain/enums/match-session-status.enum';
 
 // Un jugador nunca tiene las dos fuentes de estadísticas en una jornada: o
-// goles por ronda, o carga manual. Sin rondas carga cualquiera; en una jornada
-// finalizada con rondas, solo quien no jugó ninguna ("Estive lá").
+// goles por ronda, o carga manual. Solo se carga con la jornada finalizada (antes
+// todavía puede tener rondas y la carga la trabaría): sin rondas carga
+// cualquiera; con rondas, solo quien no jugó ninguna ("Estive lá").
 export async function assertCanLoadManualStats(
   session: MatchSession,
   playerId: string,
   matchRepository: MatchRepository,
   byAdmin: boolean,
 ): Promise<void> {
+  if (session.status !== MatchSessionStatus.FINALIZADA) {
+    throw new ConflictError(
+      'Las estadísticas se cargan cuando la jornada termina',
+    );
+  }
+
   if (session.allowsManualStats) return;
 
   if (!session.allowsLateManualStats) {

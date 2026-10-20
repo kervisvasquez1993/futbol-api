@@ -57,8 +57,8 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     return withStats;
   }
 
-  // Ordena la carga manual y calcula allowsManualStats (jornada sin rondas) y
-  // allowsLateManualStats (finalizada con rondas).
+  // Ordena la carga manual y calcula allowsManualStats (finalizada sin rondas)
+  // y allowsLateManualStats (finalizada con rondas).
   private async withManualStats(
     sessions: MatchSession[],
   ): Promise<MatchSession[]> {
@@ -71,10 +71,9 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     const withRounds = new Set(rows.map((row) => row.session_id));
 
     for (const session of sessions) {
-      session.allowsManualStats = !withRounds.has(session.id);
-      session.allowsLateManualStats =
-        withRounds.has(session.id) &&
-        session.status === MatchSessionStatus.FINALIZADA;
+      const finished = session.status === MatchSessionStatus.FINALIZADA;
+      session.allowsManualStats = finished && !withRounds.has(session.id);
+      session.allowsLateManualStats = finished && withRounds.has(session.id);
       session.manualStats.sort(
         (a, b) =>
           b.goals - a.goals ||

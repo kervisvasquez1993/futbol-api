@@ -63,8 +63,8 @@ export class MatchSession {
   @OneToMany(() => SessionPlayerStat, (stat) => stat.session)
   manualStats: SessionPlayerStat[];
 
-  // No es columna: lo calcula el repositorio (true si la jornada no tiene
-  // rondas) para que el front no tenga que deducir la regla.
+  // No es columna: lo calcula el repositorio (true si la jornada está
+  // finalizada y no tiene rondas) para que el front no tenga que deducir la regla.
   allowsManualStats: boolean;
 
   // No es columna: true si está finalizada y tiene rondas. Ahí solo carga a
