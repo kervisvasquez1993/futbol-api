@@ -42,7 +42,12 @@ export class MatchLifecycleService {
       (match.homeScore >= match.goalLimit ||
         match.awayScore >= match.goalLimit);
 
-    if (timeExpired || goalLimitReached) {
+    // Gol de ouro: con el tiempo vencido y empatados sigue hasta el próximo
+    // gol (el +1 al marcador vuelve a pasar por acá y lo cierra).
+    const waitsGoldenGoal =
+      match.goldenGoal && match.homeScore === match.awayScore;
+
+    if ((timeExpired && !waitsGoldenGoal) || goalLimitReached) {
       return this.finish(match);
     }
 

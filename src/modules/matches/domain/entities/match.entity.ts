@@ -50,6 +50,10 @@ export class Match {
   @Column({ name: 'goal_limit', type: 'int', nullable: true })
   goalLimit: number | null;
 
+  // Con el tiempo vencido y empatados no termina: gana el próximo gol.
+  @Column({ name: 'golden_goal', type: 'boolean', default: false })
+  goldenGoal: boolean;
+
   // Reloj del partido (ver match-clock.ts). null = todavía no arrancó: no
   // vence por tiempo.
   @Column({ name: 'started_at', type: 'timestamptz', nullable: true })

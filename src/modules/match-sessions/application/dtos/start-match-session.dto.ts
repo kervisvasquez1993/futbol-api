@@ -2,9 +2,11 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsInt,
   IsOptional,
+  IsUUID,
   Max,
   Min,
   ValidateNested,
@@ -19,7 +21,8 @@ import {
 export class StartMatchSessionDto {
   @IsOptional()
   @IsEnum(SessionRotationMode, {
-    message: 'rotationMode debe ser "manual" o "winner_stays"',
+    message:
+      'rotationMode debe ser "manual", "winner_stays" o "bench_rotation"',
   })
   rotationMode?: SessionRotationMode;
 
@@ -44,4 +47,15 @@ export class StartMatchSessionDto {
   @ValidateNested({ each: true })
   @Type(() => SessionTeamInputDto)
   teams: SessionTeamInputDto[];
+
+  // Vinieron y no están en ningún equipo (bench_rotation). Se suman a
+  // attendees.
+  @IsOptional()
+  @IsArray({ message: 'El banco debe ser una lista' })
+  @IsUUID('all', { each: true, message: 'Cada jugador debe ser un id válido' })
+  benchPlayerIds?: string[];
+
+  @IsOptional()
+  @IsBoolean({ message: 'goldenGoal debe ser true o false' })
+  goldenGoal?: boolean;
 }

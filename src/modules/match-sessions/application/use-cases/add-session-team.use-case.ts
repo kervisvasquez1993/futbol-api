@@ -10,6 +10,7 @@ import { SessionRotationMode } from '../../domain/enums/session-rotation-mode.en
 import { MatchSessionRepository } from '../../domain/ports/match-session.repository';
 import { SessionTeamInputDto } from '../dtos/create-match-session.dto';
 import { withQueue } from '../helpers/session-response.helper';
+import { BENCH_ROTATION_TEAMS_MESSAGE } from '../helpers/session-teams.helper';
 import { SessionEventsService } from '../services/session-events.service';
 
 @Injectable()
@@ -35,6 +36,10 @@ export class AddSessionTeamUseCase {
       throw new ConflictError(
         'La jornada todavía está en convocatoria: empezala con /start',
       );
+    }
+
+    if (session.rotationMode === SessionRotationMode.BENCH_ROTATION) {
+      throw new ValidationError(BENCH_ROTATION_TEAMS_MESSAGE);
     }
 
     const nameTaken = session.teams.some(

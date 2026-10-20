@@ -54,6 +54,11 @@ export class MatchSession {
   })
   rotationMode: SessionRotationMode;
 
+  // Gol de ouro: con el tiempo vencido y empatados, gana el próximo gol. Cada
+  // ronda lo copia al crearse.
+  @Column({ name: 'golden_goal', type: 'boolean', default: false })
+  goldenGoal: boolean;
+
   @OneToMany(() => SessionTeam, (team) => team.session, { cascade: true })
   teams: SessionTeam[];
 

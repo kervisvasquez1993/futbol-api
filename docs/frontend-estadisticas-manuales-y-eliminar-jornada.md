@@ -9,6 +9,11 @@ Delta sobre `frontend-jornadas-v2-rotacion-tiempo-real.md`. Dos cosas nuevas:
 
 Todo sigue envuelto en `{ success, data }` / `{ success: false, message, errors? }`, salvo el SSE.
 
+> **Actualizado por `frontend-goles-aprobacion-y-total-jornada.md`:** quien jugó rondas también
+> puede cargar el total de la jornada (ya no existen los `409` de "ya jugaste rondas" ni el de
+> sumar a una ronda a alguien con carga manual). El total aprobado **reemplaza** sus goles de las
+> rondas en el ranking. Lo de 1.1.1 sobre esos `409` ya no aplica.
+
 > ### ⚠️ Cambio (2026-10-20): la carga manual solo con la jornada `finalizada`
 >
 > **Bug que corrige:** un jugador marcaba "Participei" en una jornada `en_curso` todavía sin rondas,

@@ -33,6 +33,11 @@ export class SessionAttendee {
   @JoinColumn({ name: 'player_id' })
   player: Player;
 
+  // Se fue en plena jornada (bench_rotation): sale de la rotación pero se
+  // conserva porque jugó rondas. Los retirados no vuelven en `attendees`.
+  @Column({ name: 'left_at', type: 'timestamptz', nullable: true })
+  leftAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -41,7 +42,8 @@ export class CreateMatchSessionDto {
 
   @IsOptional()
   @IsEnum(SessionRotationMode, {
-    message: 'rotationMode debe ser "manual" o "winner_stays"',
+    message:
+      'rotationMode debe ser "manual", "winner_stays" o "bench_rotation"',
   })
   rotationMode?: SessionRotationMode;
 
@@ -68,4 +70,8 @@ export class CreateMatchSessionDto {
   @ValidateNested({ each: true })
   @Type(() => SessionTeamInputDto)
   teams?: SessionTeamInputDto[];
+
+  @IsOptional()
+  @IsBoolean({ message: 'goldenGoal debe ser true o false' })
+  goldenGoal?: boolean;
 }

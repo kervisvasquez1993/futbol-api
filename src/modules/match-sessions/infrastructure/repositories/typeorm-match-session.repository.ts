@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, In, Repository } from 'typeorm';
+import {
+  DeepPartial,
+  EntityManager,
+  In,
+  Not,
+  IsNull,
+  Repository,
+} from 'typeorm';
 import { MatchSession } from '../../domain/entities/match-session.entity';
 import { SessionAttendee } from '../../domain/entities/session-attendee.entity';
 import { SessionPlayerStat } from '../../domain/entities/session-player-stat.entity';
@@ -36,7 +43,7 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
       order: {
         createdAt: 'DESC',
         teams: { joinOrder: 'ASC' },
-        attendees: { createdAt: 'ASC' },
+        attendees: { createdAt: 'ASC', playerId: 'ASC' },
       },
     });
     return this.withManualStats(sessions);
@@ -50,15 +57,21 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
         attendees: { player: true },
         manualStats: { player: true },
       },
-      order: { teams: { joinOrder: 'ASC' }, attendees: { createdAt: 'ASC' } },
+      // playerId desempata a los que llegaron juntos: el orden de llegada
+      // decide la rotación con banco y el front lo usa tal cual viene.
+      order: {
+        teams: { joinOrder: 'ASC' },
+        attendees: { createdAt: 'ASC', playerId: 'ASC' },
+      },
     });
     if (!session) return null;
     const [withStats] = await this.withManualStats([session]);
     return withStats;
   }
 
-  // Ordena la carga manual y calcula allowsManualStats (finalizada sin rondas)
-  // y allowsLateManualStats (finalizada con rondas).
+  // Saca de attendees a los retirados, ordena la carga manual y calcula
+  // allowsManualStats (finalizada sin rondas) y allowsLateManualStats
+  // (finalizada con rondas).
   private async withManualStats(
     sessions: MatchSession[],
   ): Promise<MatchSession[]> {
@@ -71,6 +84,9 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     const withRounds = new Set(rows.map((row) => row.session_id));
 
     for (const session of sessions) {
+      session.attendees = session.attendees.filter(
+        (attendee) => !attendee.leftAt,
+      );
       const finished = session.status === MatchSessionStatus.FINALIZADA;
       session.allowsManualStats = finished && !withRounds.has(session.id);
       session.allowsLateManualStats = finished && withRounds.has(session.id);
@@ -104,12 +120,34 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
   }
 
   async addAttendee(sessionId: string, playerId: string): Promise<void> {
-    // orIgnore: confirmar dos veces no falla (unique session_id + player_id).
-    await this.attendeeRepository
+    await this.addAttendees(sessionId, [playerId]);
+  }
+
+  async addAttendees(sessionId: string, playerIds: string[]): Promise<void> {
+    await this.insertAttendees(this.repository.manager, sessionId, playerIds);
+  }
+
+  async findRetiredPlayerIds(sessionId: string): Promise<string[]> {
+    const retired = await this.attendeeRepository.find({
+      where: { sessionId, leftAt: Not(IsNull()) },
+    });
+    return retired.map((attendee) => attendee.playerId);
+  }
+
+  // Confirmar dos veces no falla (unique session_id + player_id); si se había
+  // retirado, vuelve (left_at = null).
+  private async insertAttendees(
+    manager: EntityManager,
+    sessionId: string,
+    playerIds: string[],
+  ): Promise<void> {
+    if (playerIds.length === 0) return;
+    await manager
       .createQueryBuilder()
       .insert()
-      .values({ sessionId, playerId })
-      .orIgnore()
+      .into(SessionAttendee)
+      .values(playerIds.map((playerId) => ({ sessionId, playerId })))
+      .orUpdate(['left_at'], ['session_id', 'player_id'])
       .execute();
   }
 
@@ -121,9 +159,14 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     sessionId: string,
     data: Pick<
       MatchSession,
-      'rotationMode' | 'durationMinutes' | 'goalLimit' | 'playersPerTeam'
+      | 'rotationMode'
+      | 'durationMinutes'
+      | 'goalLimit'
+      | 'playersPerTeam'
+      | 'goldenGoal'
     >,
     teams: DeepPartial<SessionTeam>[],
+    attendeePlayerIds: string[],
   ): Promise<MatchSession | null> {
     const started = await this.repository.manager.transaction(
       async (manager) => {
@@ -144,6 +187,7 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
             manager.create(SessionTeam, { ...team, sessionId }),
           ),
         );
+        await this.insertAttendees(manager, sessionId, attendeePlayerIds);
         return true;
       },
     );
@@ -159,6 +203,8 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
       empty,
       remove,
       attendeePlayerIds,
+      removeAttendeePlayerIds = [],
+      retireAttendeePlayerIds = [],
       playersPerTeam,
     }: SessionTeamsReplacement,
   ): Promise<MatchSession> {
@@ -227,20 +273,44 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
         );
       }
 
-      if (attendeePlayerIds.length > 0) {
-        await manager
-          .createQueryBuilder()
-          .insert()
-          .into(SessionAttendee)
-          .values(
-            attendeePlayerIds.map((playerId) => ({ sessionId, playerId })),
-          )
-          .orIgnore()
-          .execute();
+      await this.insertAttendees(manager, sessionId, attendeePlayerIds);
+
+      if (removeAttendeePlayerIds.length > 0) {
+        await manager.delete(SessionAttendee, {
+          sessionId,
+          playerId: In(removeAttendeePlayerIds),
+        });
+      }
+
+      if (retireAttendeePlayerIds.length > 0) {
+        await manager.update(
+          SessionAttendee,
+          { sessionId, playerId: In(retireAttendeePlayerIds) },
+          { leftAt: new Date() },
+        );
       }
     });
 
     return (await this.findById(sessionId)) as MatchSession;
+  }
+
+  async setTeamLineups(
+    lineups: { teamId: string; playerIds: string[] }[],
+  ): Promise<void> {
+    await this.repository.manager.transaction(async (manager) => {
+      await manager.delete(SessionTeamPlayer, {
+        sessionTeamId: In(lineups.map((lineup) => lineup.teamId)),
+      });
+      const players = lineups.flatMap((lineup) =>
+        lineup.playerIds.map((playerId) => ({
+          sessionTeamId: lineup.teamId,
+          playerId,
+        })),
+      );
+      if (players.length > 0) {
+        await manager.insert(SessionTeamPlayer, players);
+      }
+    });
   }
 
   async updateTeamQueuePosition(

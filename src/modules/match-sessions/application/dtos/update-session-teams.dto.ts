@@ -41,4 +41,11 @@ export class UpdateSessionTeamsDto {
   @Min(1, { message: PLAYERS_PER_TEAM_MESSAGE })
   @Max(MAX_PLAYERS_PER_TEAM, { message: PLAYERS_PER_TEAM_MESSAGE })
   playersPerTeam?: number | null;
+
+  // bench_rotation: los que esperan. Los attendees que no estén ni en un
+  // equipo ni acá salen de la rotación. Sin el campo no cambia nadie.
+  @IsOptional()
+  @IsArray({ message: 'El banco debe ser una lista' })
+  @IsUUID('all', { each: true, message: 'Cada jugador debe ser un id válido' })
+  benchPlayerIds?: string[];
 }

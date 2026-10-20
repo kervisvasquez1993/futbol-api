@@ -4,6 +4,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '../../../../shared/errors/domain-errors';
+import { Match } from '../../../matches/domain/entities/match.entity';
 import { MatchStatus } from '../../../matches/domain/enums/match-status.enum';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import { PlayerRepository } from '../../../players/domain/ports/player.repository';
@@ -19,7 +20,11 @@ import {
   UpdateSessionTeamsDto,
 } from '../dtos/update-session-teams.dto';
 import { withQueue } from '../helpers/session-response.helper';
-import { assertValidSessionTeams } from '../helpers/session-teams.helper';
+import {
+  assertBenchRotationTeams,
+  assertValidBench,
+  assertValidSessionTeams,
+} from '../helpers/session-teams.helper';
 import { SessionEventsService } from '../services/session-events.service';
 
 const normalizeName = (name: string) => name.trim().toLowerCase();
@@ -48,6 +53,17 @@ export class UpdateSessionTeamsUseCase {
     }
 
     await assertValidSessionTeams(dto.teams, this.playerRepository);
+
+    const isBenchRotation =
+      session.rotationMode === SessionRotationMode.BENCH_ROTATION;
+    const bench = dto.benchPlayerIds;
+
+    if (isBenchRotation) {
+      assertBenchRotationTeams(dto.teams);
+    }
+    if (bench) {
+      await assertValidBench(dto.teams, bench, this.playerRepository);
+    }
 
     const existingById = new Map(session.teams.map((team) => [team.id, team]));
     const bodyIds = dto.teams.flatMap((team) => (team.id ? [team.id] : []));
@@ -136,7 +152,13 @@ export class UpdateSessionTeamsUseCase {
       remove: unlisted
         .filter((team) => !playedTeamIds.has(team.id))
         .map((team) => team.id),
-      attendeePlayerIds: this.newAttendees(session, teams),
+      attendeePlayerIds: [
+        ...this.newAttendees(session, teams),
+        ...(bench ?? []),
+      ],
+      ...(isBenchRotation &&
+        bench &&
+        this.departures(session, teams, bench, matches)),
       playersPerTeam: dto.playersPerTeam,
     };
 
@@ -169,6 +191,37 @@ export class UpdateSessionTeamsUseCase {
     if (positions.some((position, index) => position !== index)) {
       throw new ValidationError('Las posiciones de la fila no son válidas');
     }
+  }
+
+  // bench_rotation: el attendee que no quedó ni en un equipo ni en el banco se
+  // fue. Si no jugó ninguna ronda se borra; si jugó queda retirado (sus
+  // rondas siguen contando, pero ya no entra).
+  private departures(
+    session: MatchSession,
+    teams: UpdateSessionTeamInputDto[],
+    bench: string[],
+    matches: Match[],
+  ): Pick<
+    SessionTeamsReplacement,
+    'removeAttendeePlayerIds' | 'retireAttendeePlayerIds'
+  > {
+    const staying = new Set([
+      ...teams.flatMap((team) => team.playerIds),
+      ...bench,
+    ]);
+    const played = new Set(
+      matches.flatMap((match) =>
+        match.participants.map((participant) => participant.playerId),
+      ),
+    );
+    const leaving = session.attendees
+      .map((attendee) => attendee.playerId)
+      .filter((playerId) => !staying.has(playerId));
+
+    return {
+      removeAttendeePlayerIds: leaving.filter((id) => !played.has(id)),
+      retireAttendeePlayerIds: leaving.filter((id) => played.has(id)),
+    };
   }
 
   // Todo jugador que quedó en un equipo también "vino" a la jornada.

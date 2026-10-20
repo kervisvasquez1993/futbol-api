@@ -21,7 +21,12 @@ export interface SessionTeamsReplacement {
   empty: { id: string; name: string }[];
   // Equipos que no vinieron y nunca jugaron.
   remove: string[];
+  // Se suman a attendees (si se habían retirado, vuelven).
   attendeePlayerIds: string[];
+  // bench_rotation: los que se fueron. Sin rondas jugadas se borran; con
+  // rondas quedan retirados (left_at).
+  removeAttendeePlayerIds?: string[];
+  retireAttendeePlayerIds?: string[];
   // undefined = no cambia.
   playersPerTeam?: number | null;
 }
@@ -35,7 +40,12 @@ export abstract class MatchSessionRepository {
     sessionId: string,
     data: DeepPartial<SessionTeam>,
   ): Promise<MatchSession>;
+  // Si estaba retirado, vuelve.
   abstract addAttendee(sessionId: string, playerId: string): Promise<void>;
+  abstract addAttendees(sessionId: string, playerIds: string[]): Promise<void>;
+  // Los que se fueron en plena jornada (left_at), que ya no vienen en
+  // `attendees`.
+  abstract findRetiredPlayerIds(sessionId: string): Promise<string[]>;
   abstract removeAttendee(sessionId: string, playerId: string): Promise<void>;
   // Pasa la jornada de 'convocatoria' a 'en_curso' con sus equipos. Devuelve
   // null si ya no estaba en convocatoria (otro admin la empezó antes).
@@ -43,14 +53,24 @@ export abstract class MatchSessionRepository {
     sessionId: string,
     data: Pick<
       MatchSession,
-      'rotationMode' | 'durationMinutes' | 'goalLimit' | 'playersPerTeam'
+      | 'rotationMode'
+      | 'durationMinutes'
+      | 'goalLimit'
+      | 'playersPerTeam'
+      | 'goldenGoal'
     >,
     teams: DeepPartial<SessionTeam>[],
+    attendeePlayerIds: string[],
   ): Promise<MatchSession | null>;
   abstract replaceTeams(
     sessionId: string,
     replacement: SessionTeamsReplacement,
   ): Promise<MatchSession>;
+  // bench_rotation: reemplaza las plantillas de los equipos con la próxima
+  // formación.
+  abstract setTeamLineups(
+    lineups: { teamId: string; playerIds: string[] }[],
+  ): Promise<void>;
   abstract updateTeamQueuePosition(
     sessionTeamId: string,
     queuePosition: number | null,

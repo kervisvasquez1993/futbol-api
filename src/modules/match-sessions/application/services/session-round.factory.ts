@@ -16,10 +16,10 @@ export class SessionRoundFactory {
     private readonly randomService: RandomService,
   ) {}
 
-  // En 'winner_stays' la ronda 1 la juegan los dos primeros equipos; en
-  // 'manual' la arma el admin después.
+  // En 'winner_stays' y 'bench_rotation' la ronda 1 la juegan los dos
+  // primeros equipos; en 'manual' la arma el admin después.
   async createFirstRound(session: MatchSession): Promise<Match | null> {
-    if (session.rotationMode !== SessionRotationMode.WINNER_STAYS) {
+    if (session.rotationMode === SessionRotationMode.MANUAL) {
       return null;
     }
 
@@ -73,6 +73,7 @@ export class SessionRoundFactory {
       awaySessionTeamId: away.id,
       durationMinutes,
       goalLimit,
+      goldenGoal: session.goldenGoal,
       startedAt: startClock ? new Date() : null,
       participants: [
         ...participants(homeIds, MatchTeamSide.HOME, false),

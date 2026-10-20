@@ -11,6 +11,8 @@ import { StartMatchSessionDto } from '../dtos/start-match-session.dto';
 import { assertHasNoManualStats } from '../helpers/manual-stats-rules.helper';
 import { withQueue } from '../helpers/session-response.helper';
 import {
+  assertBenchRotationTeams,
+  assertValidBench,
   assertValidSessionTeams,
   buildSessionTeams,
 } from '../helpers/session-teams.helper';
@@ -48,6 +50,20 @@ export class StartMatchSessionUseCase {
     await assertValidSessionTeams(dto.teams, this.playerRepository);
 
     const rotationMode = dto.rotationMode ?? session.rotationMode;
+    const isBenchRotation = rotationMode === SessionRotationMode.BENCH_ROTATION;
+    const bench = dto.benchPlayerIds ?? [];
+
+    if (isBenchRotation) {
+      assertBenchRotationTeams(dto.teams);
+    }
+    await assertValidBench(dto.teams, bench, this.playerRepository);
+
+    // Con banco la rotación sale de attendees (el banco es "vino y no está en
+    // un equipo"): los de los equipos también tienen que estar.
+    const attendeePlayerIds = [
+      ...(isBenchRotation ? dto.teams.flatMap((team) => team.playerIds) : []),
+      ...bench,
+    ];
 
     const startedSession = await this.matchSessionRepository.start(
       sessionId,
@@ -56,11 +72,13 @@ export class StartMatchSessionUseCase {
         durationMinutes: dto.durationMinutes ?? session.durationMinutes,
         goalLimit: dto.goalLimit ?? session.goalLimit,
         playersPerTeam: dto.playersPerTeam ?? session.playersPerTeam,
+        goldenGoal: dto.goldenGoal ?? session.goldenGoal,
       },
       buildSessionTeams(
         dto.teams,
         rotationMode === SessionRotationMode.WINNER_STAYS,
       ),
+      attendeePlayerIds,
     );
 
     if (!startedSession) {
