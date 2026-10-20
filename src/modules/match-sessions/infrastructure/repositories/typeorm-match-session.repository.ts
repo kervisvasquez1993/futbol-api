@@ -300,10 +300,6 @@ export class TypeOrmMatchSessionRepository implements MatchSessionRepository {
     return !!result.affected;
   }
 
-  async hasPlayerStats(sessionId: string, playerId: string): Promise<boolean> {
-    return this.statRepository.exists({ where: { sessionId, playerId } });
-  }
-
   async removePlayerStats(sessionId: string, playerId: string): Promise<void> {
     await this.statRepository.delete({ sessionId, playerId });
   }

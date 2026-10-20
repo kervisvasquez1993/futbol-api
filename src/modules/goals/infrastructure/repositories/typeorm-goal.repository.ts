@@ -12,7 +12,10 @@ export class TypeOrmGoalRepository implements GoalRepository {
   ) {}
 
   findById(id: string): Promise<Goal | null> {
-    return this.repository.findOne({ where: { id } });
+    return this.repository.findOne({
+      where: { id },
+      relations: { scorer: true, assist: true },
+    });
   }
 
   findByMatchId(matchId: string): Promise<Goal[]> {
@@ -24,6 +27,10 @@ export class TypeOrmGoalRepository implements GoalRepository {
 
   async create(data: Partial<Goal>): Promise<Goal> {
     const goal = this.repository.create(data);
+    return this.repository.save(goal);
+  }
+
+  save(goal: Goal): Promise<Goal> {
     return this.repository.save(goal);
   }
 

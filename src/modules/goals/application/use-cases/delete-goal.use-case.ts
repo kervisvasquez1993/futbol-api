@@ -6,9 +6,15 @@ import {
 } from '../../../../shared/errors/domain-errors';
 import { CurrentUserPayload } from '../../../../shared/decorators/current-user.decorator';
 import { UserRole } from '../../../../shared/enums/user-role.enum';
+import { Match } from '../../../matches/domain/entities/match.entity';
 import { MatchStatus } from '../../../matches/domain/enums/match-status.enum';
 import { MatchLifecycleService } from '../../../matches/application/services/match-lifecycle.service';
 import { MatchRepository } from '../../../matches/domain/ports/match.repository';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
+import { UserRepository } from '../../../users/domain/ports/user.repository';
+import { Goal } from '../../domain/entities/goal.entity';
+import { GoalStatus } from '../../domain/enums/goal-status.enum';
+import { goalNotificationContext } from '../helpers/goal-notification-context';
 
 @Injectable()
 export class DeleteGoalUseCase {
@@ -16,6 +22,8 @@ export class DeleteGoalUseCase {
     private readonly goalRepository: GoalRepository,
     private readonly matchRepository: MatchRepository,
     private readonly matchLifecycleService: MatchLifecycleService,
+    private readonly userRepository: UserRepository,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async execute(id: string, currentUser: CurrentUserPayload): Promise<void> {
@@ -32,7 +40,9 @@ export class DeleteGoalUseCase {
       (goal.scorerId === currentUser.playerId ||
         goal.assistId === currentUser.playerId);
 
-    if (currentUser.role !== UserRole.ADMIN && !isOwnGoal) {
+    const isAdmin = currentUser.role === UserRole.ADMIN;
+
+    if (!isAdmin && !isOwnGoal) {
       throw new ForbiddenError('Solo puedes borrar tus goles o asistencias');
     }
 
@@ -41,6 +51,16 @@ export class DeleteGoalUseCase {
     const match = await this.matchRepository.findById(goal.matchId);
 
     if (!match) return;
+
+    // Un admin que borra un gol pendiente de otro lo está rechazando.
+    if (
+      isAdmin &&
+      goal.status === GoalStatus.PENDIENTE &&
+      goal.createdByUserId &&
+      goal.createdByUserId !== currentUser.id
+    ) {
+      await this.notifyRejected(goal, goal.createdByUserId, match, currentUser);
+    }
 
     // Un gol que no sumó al marcador, o de un partido ya terminado, vuelve a
     // quedar "sin autor": se borra el autor, no el gol.
@@ -61,5 +81,26 @@ export class DeleteGoalUseCase {
       );
       this.matchLifecycleService.notifyChanged(updatedMatch);
     }
+  }
+
+  private async notifyRejected(
+    goal: Goal,
+    creatorUserId: string,
+    match: Match,
+    currentUser: CurrentUserPayload,
+  ): Promise<void> {
+    const creator = await this.userRepository.findById(creatorUserId);
+    if (!creator?.playerId) return;
+
+    await this.notificationsService.goalRejected(
+      await goalNotificationContext(
+        goal,
+        match,
+        creator.playerId,
+        currentUser.id,
+        this.matchRepository,
+      ),
+      creator.id,
+    );
   }
 }

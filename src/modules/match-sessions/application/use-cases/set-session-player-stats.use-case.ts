@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { NotFoundError } from '../../../../shared/errors/domain-errors';
-import { MatchRepository } from '../../../matches/domain/ports/match.repository';
 import { NotificationsService } from '../../../notifications/application/services/notifications.service';
 import { PlayerRepository } from '../../../players/domain/ports/player.repository';
 import { MatchSession } from '../../domain/entities/match-session.entity';
@@ -17,16 +16,16 @@ export interface StatsActor {
   byAdmin: boolean;
 }
 
-// "Participei": carga (o corrige) los goles y asistencias de un jugador en una
-// jornada sin rondas (en cualquier estado: puede no haberse empezado nunca en
-// la app), o en una finalizada con rondas si el jugador no jugó ninguna. Lo que carga el jugador queda pendiente (también
-// si edita una carga ya aprobada); lo que carga un admin queda aprobado.
+// "Participei": carga (o corrige) el total de goles y asistencias de un
+// jugador en una jornada finalizada, haya jugado rondas o no (aprobado,
+// reemplaza los de las rondas en el ranking). Lo que carga el jugador queda
+// pendiente (también si edita una carga ya aprobada); lo que carga un admin
+// queda aprobado.
 @Injectable()
 export class SetSessionPlayerStatsUseCase {
   constructor(
     private readonly matchSessionRepository: MatchSessionRepository,
     private readonly playerRepository: PlayerRepository,
-    private readonly matchRepository: MatchRepository,
     private readonly sessionEventsService: SessionEventsService,
     private readonly notificationsService: NotificationsService,
   ) {}
@@ -48,12 +47,7 @@ export class SetSessionPlayerStatsUseCase {
       throw new NotFoundError('Jugador no encontrado');
     }
 
-    await assertCanLoadManualStats(
-      session,
-      playerId,
-      this.matchRepository,
-      byAdmin,
-    );
+    assertCanLoadManualStats(session);
 
     await this.matchSessionRepository.upsertPlayerStats(sessionId, playerId, {
       goals: dto.goals,

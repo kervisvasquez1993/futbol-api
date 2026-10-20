@@ -67,8 +67,8 @@ export class MatchSession {
   // finalizada y no tiene rondas) para que el front no tenga que deducir la regla.
   allowsManualStats: boolean;
 
-  // No es columna: true si está finalizada y tiene rondas. Ahí solo carga a
-  // mano quien no jugó ninguna ronda.
+  // No es columna: true si está finalizada y tiene rondas. Carga cualquiera de
+  // la jornada; el total aprobado reemplaza sus goles de las rondas.
   allowsLateManualStats: boolean;
 
   @CreateDateColumn({ name: 'created_at' })

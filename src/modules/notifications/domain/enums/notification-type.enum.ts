@@ -7,4 +7,10 @@ export enum NotificationType {
   MANUAL_STATS_REJECTED = 'manual_stats_rejected',
   // Al jugador: un admin cargó o corrigió sus números (quedan aprobados).
   MANUAL_STATS_SET_BY_ADMIN = 'manual_stats_set_by_admin',
+  // A los admins: un jugador cargó un gol/asistencia en un partido terminado.
+  GOAL_SUBMITTED = 'goal_submitted',
+  // A quien lo cargó: un admin aprobó el gol.
+  GOAL_APPROVED = 'goal_approved',
+  // A quien lo cargó: un admin borró el gol pendiente.
+  GOAL_REJECTED = 'goal_rejected',
 }

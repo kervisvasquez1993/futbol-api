@@ -4,14 +4,17 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { AdminGuard } from '../../../shared/guards/admin.guard';
 import { JwtAuthGuard } from '../../../shared/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../../../shared/decorators/current-user.decorator';
 import { CreateGoalDto } from '../application/dtos/create-goal.dto';
 import { AddGoalUseCase } from '../application/use-cases/add-goal.use-case';
+import { ApproveGoalUseCase } from '../application/use-cases/approve-goal.use-case';
 import { DeleteGoalUseCase } from '../application/use-cases/delete-goal.use-case';
 import { GetMatchSummaryUseCase } from '../application/use-cases/get-match-summary.use-case';
 import { ListGoalsByMatchUseCase } from '../application/use-cases/list-goals-by-match.use-case';
@@ -23,6 +26,7 @@ export class GoalsController {
     private readonly listGoalsByMatchUseCase: ListGoalsByMatchUseCase,
     private readonly deleteGoalUseCase: DeleteGoalUseCase,
     private readonly getMatchSummaryUseCase: GetMatchSummaryUseCase,
+    private readonly approveGoalUseCase: ApproveGoalUseCase,
   ) {}
 
   @Get('matches/:matchId/goals')
@@ -43,6 +47,12 @@ export class GoalsController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.addGoalUseCase.execute(matchId, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Patch('goals/:id/approve')
+  approve(@Param('id') id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.approveGoalUseCase.execute(id, user);
   }
 
   @UseGuards(JwtAuthGuard)

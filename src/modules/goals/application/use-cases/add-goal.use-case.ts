@@ -13,7 +13,10 @@ import {
   ForbiddenError,
   ValidationError,
 } from '../../../../shared/errors/domain-errors';
+import { NotificationsService } from '../../../notifications/application/services/notifications.service';
+import { GoalStatus } from '../../domain/enums/goal-status.enum';
 import { CreateGoalDto } from '../dtos/create-goal.dto';
+import { goalNotificationContext } from '../helpers/goal-notification-context';
 
 @Injectable()
 export class AddGoalUseCase {
@@ -21,6 +24,7 @@ export class AddGoalUseCase {
     private readonly goalRepository: GoalRepository,
     private readonly matchRepository: MatchRepository,
     private readonly matchLifecycleService: MatchLifecycleService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async execute(
@@ -65,11 +69,12 @@ export class AddGoalUseCase {
     }
 
     const isFinished = match.status === MatchStatus.FINALIZADO;
+    const isAdmin = currentUser.role === UserRole.ADMIN;
 
     // Con el partido terminado un member solo corrige lo suyo.
     if (
       isFinished &&
-      currentUser.role !== UserRole.ADMIN &&
+      !isAdmin &&
       dto.scorerId !== currentUser.playerId &&
       dto.assistId !== currentUser.playerId
     ) {
@@ -96,13 +101,31 @@ export class AddGoalUseCase {
       await this.assertHasUnassignedGoal(match, scorerTeam);
     }
 
+    // En vivo el gol es del juego (mueve el marcador); con el partido
+    // terminado, lo que carga un member espera la aprobación de un admin.
+    const isPending = isFinished && !isAdmin;
+
     const goal = await this.goalRepository.create({
       matchId,
       scorerId: dto.scorerId,
       assistId: dto.assistId ?? null,
       minute: dto.minute ?? null,
       addedToScore: addToScore,
+      status: isPending ? GoalStatus.PENDIENTE : GoalStatus.APROBADO,
+      createdByUserId: currentUser.id,
     });
+
+    if (isPending) {
+      await this.notificationsService.goalSubmitted(
+        await goalNotificationContext(
+          goal,
+          match,
+          currentUser.playerId as string,
+          currentUser.id,
+          this.matchRepository,
+        ),
+      );
+    }
 
     if (addToScore) {
       const updatedMatch = await this.matchRepository.adjustScore(

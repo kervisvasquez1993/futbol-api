@@ -3,7 +3,7 @@ import { NotificationType } from '../enums/notification-type.enum';
 
 export type NewNotification = Pick<
   Notification,
-  'userId' | 'type' | 'sessionId' | 'playerId' | 'data'
+  'userId' | 'type' | 'sessionId' | 'matchId' | 'playerId' | 'data'
 >;
 
 export abstract class NotificationRepository {

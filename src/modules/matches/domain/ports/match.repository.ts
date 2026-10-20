@@ -8,6 +8,11 @@ export abstract class MatchRepository {
   abstract findById(id: string): Promise<Match | null>;
   abstract findAllBySessionId(sessionId: string): Promise<Match[]>;
   abstract findActiveWithDuration(): Promise<Match[]>;
+  // Nombre de la jornada y posición de la ronda (1, 2, ...). null si el
+  // partido no es de una jornada.
+  abstract findRoundInfo(
+    matchId: string,
+  ): Promise<{ sessionName: string; roundNumber: number } | null>;
   abstract create(data: DeepPartial<Match>): Promise<Match>;
   abstract save(match: Match): Promise<Match>;
   abstract addParticipant(

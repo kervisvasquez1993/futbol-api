@@ -67,10 +67,6 @@ export abstract class MatchSessionRepository {
     sessionId: string,
     playerId: string,
   ): Promise<boolean>;
-  abstract hasPlayerStats(
-    sessionId: string,
-    playerId: string,
-  ): Promise<boolean>;
   abstract removePlayerStats(
     sessionId: string,
     playerId: string,

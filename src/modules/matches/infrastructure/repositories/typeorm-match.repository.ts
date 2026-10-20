@@ -50,6 +50,24 @@ export class TypeOrmMatchRepository implements MatchRepository {
     });
   }
 
+  async findRoundInfo(
+    matchId: string,
+  ): Promise<{ sessionName: string; roundNumber: number } | null> {
+    // Mismo orden que findAllBySessionId (createdAt).
+    const rows: { sessionName: string; roundNumber: number }[] =
+      await this.repository.query(
+        `SELECT s.name AS "sessionName",
+                (SELECT COUNT(*) FROM matches r
+                 WHERE r.session_id = m.session_id
+                   AND r.created_at <= m.created_at)::int AS "roundNumber"
+         FROM matches m
+         JOIN match_sessions s ON s.id = m.session_id
+         WHERE m.id = $1`,
+        [matchId],
+      );
+    return rows[0] ?? null;
+  }
+
   async create(data: DeepPartial<Match>): Promise<Match> {
     const match = this.repository.create(data);
     return this.repository.save(match);

@@ -10,9 +10,11 @@ export interface LeaderboardRow {
   sessionsPlayed: number;
 }
 
-// Suma las dos fuentes: goles de las rondas y cargas manuales por jornada
-// (session_player_stats, solo las aprobadas por un admin). Una jornada nunca
-// tiene las dos a la vez.
+// Suma las dos fuentes: goles de las rondas (solo aprobados) y cargas manuales
+// por jornada (session_player_stats, solo las aprobadas por un admin). Nunca
+// se suman para un mismo jugador y jornada: si tiene el total de la jornada
+// aprobado, ese total reemplaza sus goles (y asistencias) de las rondas. Los
+// partidos sueltos tienen session_id NULL y el NOT EXISTS nunca los excluye.
 // `matchesPlayed` son rondas jugadas: las jornadas manuales no suman ahí
 // porque no se sabe cuántos partidos fueron; para eso está `sessionsPlayed`.
 export const PLAYER_STATS_SQL = `
@@ -30,15 +32,31 @@ export const PLAYER_STATS_SQL = `
     GROUP BY player_id
   ) mp ON mp.player_id = p.id
   LEFT JOIN (
-    SELECT scorer_id, COUNT(*) AS goals
-    FROM goals
-    GROUP BY scorer_id
+    SELECT g.scorer_id, COUNT(*) AS goals
+    FROM goals g
+    JOIN matches m ON m.id = g.match_id
+    WHERE g.status = 'aprobado'
+      AND NOT EXISTS (
+        SELECT 1 FROM session_player_stats s
+        WHERE s.session_id = m.session_id
+          AND s.player_id = g.scorer_id
+          AND s.status = 'aprobada'
+      )
+    GROUP BY g.scorer_id
   ) g ON g.scorer_id = p.id
   LEFT JOIN (
-    SELECT assist_id, COUNT(*) AS assists
-    FROM goals
-    WHERE assist_id IS NOT NULL
-    GROUP BY assist_id
+    SELECT g.assist_id, COUNT(*) AS assists
+    FROM goals g
+    JOIN matches m ON m.id = g.match_id
+    WHERE g.assist_id IS NOT NULL
+      AND g.status = 'aprobado'
+      AND NOT EXISTS (
+        SELECT 1 FROM session_player_stats s
+        WHERE s.session_id = m.session_id
+          AND s.player_id = g.assist_id
+          AND s.status = 'aprobada'
+      )
+    GROUP BY g.assist_id
   ) a ON a.assist_id = p.id
   LEFT JOIN (
     SELECT player_id, SUM(goals) AS goals, SUM(assists) AS assists

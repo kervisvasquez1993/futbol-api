@@ -1,5 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { MatchSessionRepository } from '../../../match-sessions/domain/ports/match-session.repository';
+import { Injectable } from '@nestjs/common';
 import { UserRepository } from '../../../users/domain/ports/user.repository';
 import {
   ConflictError,
@@ -7,7 +6,6 @@ import {
   NotFoundError,
 } from '../../../../shared/errors/domain-errors';
 import { MatchRepository } from '../../domain/ports/match.repository';
-import { assertHasNoManualStatsInSession } from '../helpers/assert-has-no-manual-stats-in-session';
 import { JoinMatchDto } from '../dtos/join-match.dto';
 
 @Injectable()
@@ -15,8 +13,6 @@ export class JoinMatchUseCase {
   constructor(
     private readonly matchRepository: MatchRepository,
     private readonly userRepository: UserRepository,
-    @Inject(forwardRef(() => MatchSessionRepository))
-    private readonly matchSessionRepository: MatchSessionRepository,
   ) {}
 
   async execute(matchId: string, userId: string, dto: JoinMatchDto) {
@@ -41,12 +37,6 @@ export class JoinMatchUseCase {
     if (alreadyParticipant) {
       throw new ConflictError('Ya estás inscrito en este partido');
     }
-
-    await assertHasNoManualStatsInSession(
-      match,
-      user.playerId,
-      this.matchSessionRepository,
-    );
 
     return this.matchRepository.addParticipant(
       matchId,

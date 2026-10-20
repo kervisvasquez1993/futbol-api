@@ -19,7 +19,21 @@ export interface ManualStatsContext {
   actorUserId: string;
 }
 
-// Avisos del flujo de carga manual. Una notificación que falla no tiene que
+export interface GoalContext {
+  matchId: string;
+  matchName: string;
+  // Solo si el partido es ronda de una jornada.
+  sessionId: string | null;
+  sessionName?: string;
+  roundNumber?: number;
+  // Quien cargó el gol (goleador o asistente).
+  playerId: string;
+  playerName: string;
+  isAssist: boolean;
+  actorUserId: string;
+}
+
+// Avisos de la carga manual y de los goles pendientes. Una notificación que falla no tiene que
 // romper la acción que la disparó (la carga ya se guardó): se loguea y sigue.
 @Injectable()
 export class NotificationsService {
@@ -43,6 +57,30 @@ export class NotificationsService {
         context,
       );
     });
+  }
+
+  // Un jugador cargó un gol en un partido terminado: a todos los admins.
+  goalSubmitted(context: GoalContext): Promise<void> {
+    return this.safely(async () => {
+      const admins = await this.userRepository.findAdmins();
+      await this.sendGoal(
+        admins.map((admin) => admin.id),
+        NotificationType.GOAL_SUBMITTED,
+        context,
+      );
+    });
+  }
+
+  goalApproved(context: GoalContext, creatorUserId: string): Promise<void> {
+    return this.safely(() =>
+      this.sendGoal([creatorUserId], NotificationType.GOAL_APPROVED, context),
+    );
+  }
+
+  goalRejected(context: GoalContext, creatorUserId: string): Promise<void> {
+    return this.safely(() =>
+      this.sendGoal([creatorUserId], NotificationType.GOAL_REJECTED, context),
+    );
   }
 
   manualStatsApproved(context: ManualStatsContext): Promise<void> {
@@ -92,26 +130,58 @@ export class NotificationsService {
     }
   }
 
-  private async send(
+  private send(
     userIds: string[],
     type: NotificationType,
     context: ManualStatsContext,
   ): Promise<void> {
+    return this.create(userIds, context.actorUserId, {
+      type,
+      sessionId: context.sessionId,
+      matchId: null,
+      playerId: context.playerId,
+      data: {
+        sessionName: context.sessionName,
+        playerName: context.playerName,
+        ...(context.goals !== undefined && { goals: context.goals }),
+        ...(context.assists !== undefined && { assists: context.assists }),
+      },
+    });
+  }
+
+  private sendGoal(
+    userIds: string[],
+    type: NotificationType,
+    context: GoalContext,
+  ): Promise<void> {
     const data: NotificationData = {
-      sessionName: context.sessionName,
       playerName: context.playerName,
-      ...(context.goals !== undefined && { goals: context.goals }),
-      ...(context.assists !== undefined && { assists: context.assists }),
+      matchName: context.matchName,
+      isAssist: context.isAssist,
+      ...(context.sessionName !== undefined && {
+        sessionName: context.sessionName,
+      }),
+      ...(context.roundNumber !== undefined && {
+        roundNumber: context.roundNumber,
+      }),
     };
+    return this.create(userIds, context.actorUserId, {
+      type,
+      sessionId: context.sessionId,
+      matchId: context.matchId,
+      playerId: context.playerId,
+      data,
+    });
+  }
+
+  private async create(
+    userIds: string[],
+    actorUserId: string,
+    base: Omit<NewNotification, 'userId'>,
+  ): Promise<void> {
     const rows: NewNotification[] = userIds
-      .filter((userId) => userId !== context.actorUserId)
-      .map((userId) => ({
-        userId,
-        type,
-        sessionId: context.sessionId,
-        playerId: context.playerId,
-        data,
-      }));
+      .filter((userId) => userId !== actorUserId)
+      .map((userId) => ({ userId, ...base }));
 
     const created = await this.notificationRepository.createMany(rows);
     for (const notification of created) {

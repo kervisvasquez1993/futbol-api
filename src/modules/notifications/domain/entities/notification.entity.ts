@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { MatchSession } from '../../../match-sessions/domain/entities/match-session.entity';
+import { Match } from '../../../matches/domain/entities/match.entity';
 import { Player } from '../../../players/domain/entities/player.entity';
 import { User } from '../../../users/domain/entities/user.entity';
 import { NotificationType } from '../enums/notification-type.enum';
@@ -19,6 +20,10 @@ export interface NotificationData {
   playerName?: string;
   goals?: number;
   assists?: number;
+  // Goles cargados en una ronda (goal_*).
+  matchName?: string;
+  roundNumber?: number;
+  isAssist?: boolean;
 }
 
 @Entity('notifications')
@@ -46,7 +51,15 @@ export class Notification {
   @JoinColumn({ name: 'session_id' })
   session: MatchSession | null;
 
-  // Jugador del que habla la notificación (el de la carga manual).
+  // Partido al que lleva (goal_*). Si se borra el partido, se borra con él.
+  @Column({ name: 'match_id', type: 'uuid', nullable: true })
+  matchId: string | null;
+
+  @ManyToOne(() => Match, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'match_id' })
+  match: Match | null;
+
+  // Jugador del que habla la notificación (el de la carga manual o el gol).
   @Column({ name: 'player_id', type: 'uuid', nullable: true })
   playerId: string | null;
 

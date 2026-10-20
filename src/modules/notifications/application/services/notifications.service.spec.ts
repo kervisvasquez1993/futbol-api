@@ -119,4 +119,77 @@ describe('NotificationsService', () => {
       service.manualStatsSubmitted(context),
     ).resolves.toBeUndefined();
   });
+
+  describe('goles', () => {
+    const goalContext = {
+      matchId: 'm1',
+      matchName: 'Pelada de sábado',
+      sessionId: 's1',
+      sessionName: 'Pelada de sábado',
+      roundNumber: 2,
+      playerId: 'p1',
+      playerName: 'Messi',
+      isAssist: false,
+      actorUserId: 'u-member',
+    };
+
+    it('gol cargado: a todos los admins, con el partido', async () => {
+      const { service, repository } = setup();
+
+      await service.goalSubmitted(goalContext);
+
+      const rows = repository.createMany.mock.calls[0][0];
+      expect(rows.map((row) => row.userId)).toEqual(['u-admin1', 'u-admin2']);
+      expect(rows[0]).toEqual({
+        userId: 'u-admin1',
+        type: NotificationType.GOAL_SUBMITTED,
+        sessionId: 's1',
+        matchId: 'm1',
+        playerId: 'p1',
+        data: {
+          playerName: 'Messi',
+          matchName: 'Pelada de sábado',
+          isAssist: false,
+          sessionName: 'Pelada de sábado',
+          roundNumber: 2,
+        },
+      });
+    });
+
+    it('partido suelto: sin datos de jornada', async () => {
+      const { service, repository } = setup();
+
+      await service.goalSubmitted({
+        ...goalContext,
+        sessionId: null,
+        sessionName: undefined,
+        roundNumber: undefined,
+      });
+
+      const [row] = repository.createMany.mock.calls[0][0];
+      expect(row.sessionId).toBeNull();
+      expect(row.data).toEqual({
+        playerName: 'Messi',
+        matchName: 'Pelada de sábado',
+        isAssist: false,
+      });
+    });
+
+    it('aprobado: solo a quien lo cargó, nunca al admin que aprobó', async () => {
+      const { service, repository } = setup();
+
+      await service.goalApproved(
+        { ...goalContext, actorUserId: 'u-admin1' },
+        'u-member',
+      );
+
+      const rows = repository.createMany.mock.calls[0][0];
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: 'u-member',
+        type: NotificationType.GOAL_APPROVED,
+        matchId: 'm1',
+      });
+    });
+  });
 });
