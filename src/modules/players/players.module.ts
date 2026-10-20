@@ -5,6 +5,7 @@ import { Player } from './domain/entities/player.entity';
 import { PlayerRepository } from './domain/ports/player.repository';
 import { TypeOrmPlayerRepository } from './infrastructure/repositories/typeorm-player.repository';
 import { CreatePlayerUseCase } from './application/use-cases/create-player.use-case';
+import { MergePlayerUseCase } from './application/use-cases/merge-player.use-case';
 import { DeletePlayerUseCase } from './application/use-cases/delete-player.use-case';
 import { GetPlayerStatsUseCase } from './application/use-cases/get-player-stats.use-case';
 import { GetPlayerUseCase } from './application/use-cases/get-player.use-case';
@@ -24,6 +25,7 @@ import { PlayersController } from './presentation/players.controller';
     GetPlayerUseCase,
     UpdatePlayerUseCase,
     DeletePlayerUseCase,
+    MergePlayerUseCase,
     GetPlayerStatsUseCase,
     UploadPlayerPhotoUseCase,
     { provide: PlayerRepository, useClass: TypeOrmPlayerRepository },

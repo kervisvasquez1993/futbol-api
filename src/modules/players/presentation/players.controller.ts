@@ -20,6 +20,8 @@ import type { CurrentUserPayload } from '../../../shared/decorators/current-user
 import { CreatePlayerDto } from '../application/dtos/create-player.dto';
 import { UpdatePlayerDto } from '../application/dtos/update-player.dto';
 import { CreatePlayerUseCase } from '../application/use-cases/create-player.use-case';
+import { MergePlayerUseCase } from '../application/use-cases/merge-player.use-case';
+import { MergePlayerDto } from '../application/dtos/merge-player.dto';
 import { DeletePlayerUseCase } from '../application/use-cases/delete-player.use-case';
 import { GetPlayerStatsUseCase } from '../application/use-cases/get-player-stats.use-case';
 import { GetPlayerUseCase } from '../application/use-cases/get-player.use-case';
@@ -39,6 +41,7 @@ export class PlayersController {
     private readonly getPlayerUseCase: GetPlayerUseCase,
     private readonly updatePlayerUseCase: UpdatePlayerUseCase,
     private readonly deletePlayerUseCase: DeletePlayerUseCase,
+    private readonly mergePlayerUseCase: MergePlayerUseCase,
     private readonly getPlayerStatsUseCase: GetPlayerStatsUseCase,
     private readonly uploadPlayerPhotoUseCase: UploadPlayerPhotoUseCase,
   ) {}
@@ -95,6 +98,13 @@ export class PlayersController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.uploadPlayerPhotoUseCase.execute(id, file, user);
+  }
+
+  // Convidado repetido: pasa su historial a `intoPlayerId` y se borra.
+  @UseGuards(JwtAuthGuard, AdminGuard)
+  @Post(':id/merge')
+  merge(@Param('id') id: string, @Body() dto: MergePlayerDto) {
+    return this.mergePlayerUseCase.execute(id, dto.intoPlayerId);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
