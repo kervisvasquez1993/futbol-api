@@ -4,6 +4,7 @@ import { SessionEventsService } from '../../../match-sessions/application/servic
 import { Match } from '../../domain/entities/match.entity';
 import { MatchStatus } from '../../domain/enums/match-status.enum';
 import { MatchRepository } from '../../domain/ports/match.repository';
+import { isTimeExpired } from '../helpers/match-clock';
 import { MatchEventsService } from './match-events.service';
 
 @Injectable()
@@ -34,13 +35,12 @@ export class MatchLifecycleService {
       return match;
     }
 
-    const timeExpired =
-      match.durationMinutes != null &&
-      Date.now() - match.createdAt.getTime() >= match.durationMinutes * 60_000;
+    const timeExpired = isTimeExpired(match, new Date());
 
     const goalLimitReached =
       match.goalLimit != null &&
-      (match.homeScore >= match.goalLimit || match.awayScore >= match.goalLimit);
+      (match.homeScore >= match.goalLimit ||
+        match.awayScore >= match.goalLimit);
 
     if (timeExpired || goalLimitReached) {
       return this.finish(match);

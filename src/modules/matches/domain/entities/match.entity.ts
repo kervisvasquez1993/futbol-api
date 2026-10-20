@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -13,6 +14,7 @@ import { MatchStatus } from '../enums/match-status.enum';
 import { MatchParticipant } from './match-participant.entity';
 
 @Entity('matches')
+@Check('CHK_matches_paused_seconds', '"paused_seconds" >= 0')
 export class Match {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -47,6 +49,19 @@ export class Match {
 
   @Column({ name: 'goal_limit', type: 'int', nullable: true })
   goalLimit: number | null;
+
+  // Reloj del partido (ver match-clock.ts). null = todavía no arrancó: no
+  // vence por tiempo.
+  @Column({ name: 'started_at', type: 'timestamptz', nullable: true })
+  startedAt: Date | null;
+
+  // Pausado desde este momento; null = corre (o no arrancó).
+  @Column({ name: 'paused_at', type: 'timestamptz', nullable: true })
+  pausedAt: Date | null;
+
+  // Total de pausas ya terminadas, en segundos.
+  @Column({ name: 'paused_seconds', type: 'int', default: 0 })
+  pausedSeconds: number;
 
   @Column({ name: 'session_id', nullable: true })
   sessionId: string | null;

@@ -32,11 +32,15 @@ export class SessionRoundFactory {
       secondTeam,
       session.durationMinutes,
       session.goalLimit,
+      null,
+      true,
     );
   }
 
   // Con `donorTeam`, los equipos incompletos se completan para esta ronda con
   // jugadores de ese equipo (isFillIn). Las plantillas no cambian.
+  // `startClock`: las rondas automáticas (winner_stays) arrancan el reloj
+  // solas; las armadas a mano esperan al `PATCH /matches/:id/clock`.
   async createRound(
     session: MatchSession,
     home: SessionTeam,
@@ -44,6 +48,7 @@ export class SessionRoundFactory {
     durationMinutes: number | null,
     goalLimit: number | null,
     donorTeam: SessionTeam | null = null,
+    startClock = false,
   ) {
     const homeIds = home.players.map((player) => player.playerId);
     const awayIds = away.players.map((player) => player.playerId);
@@ -68,6 +73,7 @@ export class SessionRoundFactory {
       awaySessionTeamId: away.id,
       durationMinutes,
       goalLimit,
+      startedAt: startClock ? new Date() : null,
       participants: [
         ...participants(homeIds, MatchTeamSide.HOME, false),
         ...participants(fillIns.home, MatchTeamSide.HOME, true),

@@ -18,6 +18,7 @@ import { AddParticipantDto } from '../application/dtos/add-participant.dto';
 import { AdjustMatchScoreDto } from '../application/dtos/adjust-match-score.dto';
 import { CreateMatchDto } from '../application/dtos/create-match.dto';
 import { JoinMatchDto } from '../application/dtos/join-match.dto';
+import { SetMatchClockDto } from '../application/dtos/set-match-clock.dto';
 import { SetMatchResultDto } from '../application/dtos/set-match-result.dto';
 import { UpdateMatchCriteriaDto } from '../application/dtos/update-match-criteria.dto';
 import { MatchEventStreamService } from '../application/services/match-event-stream.service';
@@ -29,6 +30,7 @@ import { FinishMatchUseCase } from '../application/use-cases/finish-match.use-ca
 import { GetMatchUseCase } from '../application/use-cases/get-match.use-case';
 import { JoinMatchUseCase } from '../application/use-cases/join-match.use-case';
 import { ListMatchesUseCase } from '../application/use-cases/list-matches.use-case';
+import { SetMatchClockUseCase } from '../application/use-cases/set-match-clock.use-case';
 import { SetMatchResultUseCase } from '../application/use-cases/set-match-result.use-case';
 import { UpdateMatchCriteriaUseCase } from '../application/use-cases/update-match-criteria.use-case';
 
@@ -43,6 +45,7 @@ export class MatchesController {
     private readonly joinMatchUseCase: JoinMatchUseCase,
     private readonly setMatchResultUseCase: SetMatchResultUseCase,
     private readonly adjustMatchScoreUseCase: AdjustMatchScoreUseCase,
+    private readonly setMatchClockUseCase: SetMatchClockUseCase,
     private readonly updateMatchCriteriaUseCase: UpdateMatchCriteriaUseCase,
     private readonly deleteMatchUseCase: DeleteMatchUseCase,
     private readonly matchEventStreamService: MatchEventStreamService,
@@ -105,6 +108,16 @@ export class MatchesController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.adjustMatchScoreUseCase.execute(id, dto, user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/clock')
+  setClock(
+    @Param('id') id: string,
+    @Body() dto: SetMatchClockDto,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    return this.setMatchClockUseCase.execute(id, dto, user);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)

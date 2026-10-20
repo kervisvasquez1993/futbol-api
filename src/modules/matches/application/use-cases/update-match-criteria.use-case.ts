@@ -30,8 +30,8 @@ export class UpdateMatchCriteriaUseCase {
     match.goalLimit = dto.goalLimit;
     const saved = await this.matchRepository.save(match);
 
-    // El tiempo sigue contando desde createdAt: si con los criterios nuevos
-    // ya venció o ya se llegó al límite, se cierra (y rota) en el momento.
+    // El reloj (startedAt y pausas) no cambia: si con los criterios nuevos ya
+    // venció o ya se llegó al límite, se cierra (y rota) en el momento.
     const checked = await this.matchLifecycleService.checkCriteria(saved);
     this.matchLifecycleService.notifyChanged(checked);
     return checked;

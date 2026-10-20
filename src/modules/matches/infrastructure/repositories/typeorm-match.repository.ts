@@ -39,7 +39,13 @@ export class TypeOrmMatchRepository implements MatchRepository {
 
   findActiveWithDuration(): Promise<Match[]> {
     return this.repository.find({
-      where: { status: MatchStatus.EN_CURSO, durationMinutes: Not(IsNull()) },
+      // Pausados o sin arrancar no vencen por tiempo.
+      where: {
+        status: MatchStatus.EN_CURSO,
+        durationMinutes: Not(IsNull()),
+        startedAt: Not(IsNull()),
+        pausedAt: IsNull(),
+      },
       relations: { participants: { player: true } },
     });
   }

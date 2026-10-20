@@ -19,6 +19,7 @@ import { FinishMatchUseCase } from './application/use-cases/finish-match.use-cas
 import { GetMatchUseCase } from './application/use-cases/get-match.use-case';
 import { JoinMatchUseCase } from './application/use-cases/join-match.use-case';
 import { ListMatchesUseCase } from './application/use-cases/list-matches.use-case';
+import { SetMatchClockUseCase } from './application/use-cases/set-match-clock.use-case';
 import { SetMatchResultUseCase } from './application/use-cases/set-match-result.use-case';
 import { UpdateMatchCriteriaUseCase } from './application/use-cases/update-match-criteria.use-case';
 import { MatchesController } from './presentation/matches.controller';
@@ -40,6 +41,7 @@ import { MatchesController } from './presentation/matches.controller';
     JoinMatchUseCase,
     SetMatchResultUseCase,
     AdjustMatchScoreUseCase,
+    SetMatchClockUseCase,
     UpdateMatchCriteriaUseCase,
     DeleteMatchUseCase,
     MatchLifecycleService,
